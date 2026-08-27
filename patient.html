@@ -1,0 +1,3071 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-50">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lifecare360 Patient Portal</title>
+    <link rel="icon" href="life.jpeg" />
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React 18 & ReactDOM 18 -->
+    <script
+      src="https://unpkg.com/react@18/umd/react.development.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+      crossorigin
+    ></script>
+    <!-- Babel Standalone for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      @keyframes pulse-ring {
+        0% {
+          transform: scale(0.95);
+          opacity: 0.5;
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 0.8;
+        }
+        100% {
+          transform: scale(0.95);
+          opacity: 0.5;
+        }
+      }
+      .pulse-logo {
+        animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes slide-in {
+        from {
+          transform: translateY(1rem);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .animate-slide-in {
+        animation: slide-in 0.3s ease-out forwards;
+      }
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.4s ease-out forwards;
+      }
+      @keyframes loading-bar {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(200%);
+        }
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: "#f0fdfa",
+                100: "#ccfbf1",
+                500: "#14b8a6",
+                600: "#0d9488",
+                700: "#0f766e",
+                900: "#115e59",
+              },
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="h-full text-slate-800">
+    <div id="root" class="h-full"></div>
+
+    <!-- Main script block executing JSX and ES Modules -->
+    <script type="text/babel" data-type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signOut,
+        sendPasswordResetEmail,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getDatabase,
+        ref,
+        set,
+        get,
+        child,
+        push,
+        onValue,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+      const { useState, useEffect, useRef } = React;
+
+      // --- Embedded Custom SVG Icons (Lucide replacements) ---
+      const Icon = ({ name, className = "w-6 h-6", ...props }) => {
+        const icons = {
+          activity: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          ),
+          user: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          ),
+          droplet: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
+            </svg>
+          ),
+          eye: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          ),
+          eyeOff: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+              <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+              <path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+              <line x1="2" y1="2" x2="22" y2="22" />
+            </svg>
+          ),
+          logout: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          ),
+          lock: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          ),
+          alert: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          ),
+          checkCircle: (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={className}
+              {...props}
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          ),
+        };
+        return icons[name] || icons["activity"];
+      };
+
+      const ROLE_KEY = "patient";
+      const ROLE_INFO = {
+        label: "Patient",
+        icon: "user",
+        color: "from-teal-500 to-emerald-600",
+      };
+
+      const App = () => {
+        // Configuration & Firebase References
+        const [firebaseConfig] = useState(() => {
+          const saved = localStorage.getItem("lc_firebase_config");
+          return saved
+            ? JSON.parse(saved)
+            : {
+                apiKey: "AIzaSyAYN9lsXTxwoL9mqvPs2YbTnrYaIXAgOFE",
+                authDomain: "lifecare360-968fd.firebaseapp.com",
+                databaseURL:
+                  "https://lifecare360-968fd-default-rtdb.firebaseio.com",
+                projectId: "lifecare360-968fd",
+                storageBucket: "lifecare360-968fd.firebasestorage.app",
+                messagingSenderId: "872526740925",
+                appId: "1:872526740925:web:0feb7f631660778089e6d4",
+              };
+        });
+
+        const [firebaseApp, setFirebaseApp] = useState(null);
+        const [auth, setAuth] = useState(null);
+        const [db, setDb] = useState(null);
+
+        // Routing / UI States
+        const [currentScreen, setCurrentScreen] = useState("loading");
+        const [toasts, setToasts] = useState([]);
+        const [user, setUser] = useState(null);
+        const [profile, setProfile] = useState(null);
+        const [loading, setLoading] = useState(false);
+
+        const showToast = (message, type = "success") => {
+          const id = Date.now();
+          setToasts((prev) => [...prev, { id, message, type }]);
+          setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => t.id !== id));
+          }, 4000);
+        };
+
+        // Initialize Firebase App
+        useEffect(() => {
+          if (firebaseConfig.apiKey) {
+            try {
+              const app = initializeApp(firebaseConfig);
+              const authInstance = getAuth(app);
+              const dbInstance = getDatabase(app);
+              setFirebaseApp(app);
+              setAuth(authInstance);
+              setDb(dbInstance);
+            } catch (err) {
+              console.error("Firebase Init Error:", err);
+              showToast(
+                "Failed to initialize Firebase. Verify settings.",
+                "error",
+              );
+            }
+          }
+        }, [firebaseConfig]);
+
+        // Auth State Listener
+        useEffect(() => {
+          if (!auth || !db) return;
+          const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser) {
+              setUser(currentUser);
+              setLoading(true);
+              try {
+                const userRef = ref(db, `users/${currentUser.uid}`);
+                const snapshot = await get(userRef);
+                if (snapshot.exists()) {
+                  const data = snapshot.val();
+                  if (data.role.toLowerCase() !== ROLE_KEY) {
+                    showToast("Mismatched Role: Access denied.", "error");
+                    await signOut(auth);
+                    setUser(null);
+                    setProfile(null);
+                    window.location.hash = "login";
+                    setCurrentScreen("login");
+                  } else {
+                    setProfile(data);
+                    setCurrentScreen("dashboard");
+                    window.location.hash = "dashboard";
+                  }
+                } else {
+                  showToast("User profile not found in database.", "error");
+                  await signOut(auth);
+                  setUser(null);
+                  setProfile(null);
+                  window.location.hash = "login";
+                  setCurrentScreen("login");
+                }
+              } catch (err) {
+                console.error(err);
+                showToast("Error checking user profile.", "error");
+                await signOut(auth);
+              } finally {
+                setLoading(false);
+              }
+            } else {
+              setUser(null);
+              setProfile(null);
+              // Default to login if not authenticated
+              if (
+                window.location.hash === "#dashboard" ||
+                window.location.hash === ""
+              ) {
+                window.location.hash = "login";
+                setCurrentScreen("login");
+              } else {
+                handleHashRouting();
+              }
+            }
+          });
+          return () => unsubscribe();
+        }, [auth, db]);
+
+        const handleHashRouting = () => {
+          const hash = window.location.hash.replace("#", "");
+          if (hash === "signup") {
+            setCurrentScreen("signup");
+          } else if (hash === "forgot-password") {
+            setCurrentScreen("forgot-password");
+          } else if (hash === "dashboard") {
+            setCurrentScreen("dashboard");
+          } else {
+            setCurrentScreen("login");
+          }
+        };
+
+        // Hash Router Listener
+        useEffect(() => {
+          window.addEventListener("hashchange", handleHashRouting);
+          return () =>
+            window.removeEventListener("hashchange", handleHashRouting);
+        }, [auth]);
+
+        const logLoginActivity = async (email, status, userId = "") => {
+          if (!db) return;
+          try {
+            const logRef = push(ref(db, "loginActivity"));
+            await set(logRef, {
+              userId: userId,
+              role: ROLE_KEY,
+              email: email,
+              timestamp: serverTimestamp(),
+              status: status,
+            });
+          } catch (err) {
+            console.error("Activity Logging Error:", err);
+          }
+        };
+
+        return (
+          <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
+            {/* Header */}
+            <header className="bg-white border-b border-slate-100 py-4 px-6 flex justify-between items-center z-10 shadow-sm">
+              <div
+                className="flex items-center gap-3 cursor-pointer"
+                onClick={() => (window.location.href = "index.html")}
+              >
+                <div className="bg-brand-500 text-white p-2 rounded-xl shadow-md shadow-brand-500/20">
+                  <Icon name="activity" className="w-6 h-6" />
+                </div>
+                <div>
+                  <h1 className="font-extrabold text-xl tracking-tight text-slate-900">
+                    LIFECARE<span className="text-brand-500">360</span>
+                  </h1>
+                  <p className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">
+                    Connected Care Network
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {user && (
+                  <button
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        await signOut(auth);
+                        showToast("Logged out successfully.");
+                        window.location.hash = "login";
+                      } catch (err) {
+                        showToast("Logout failed.", "error");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="px-4 py-2 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl font-bold flex items-center gap-2 text-sm transition"
+                  >
+                    <Icon name="logout" className="w-4 h-4" />
+                    Logout
+                  </button>
+                )}
+              </div>
+            </header>
+
+            {/* Main Area */}
+            <main className="flex-1 flex flex-col justify-center items-center p-4 md:p-8 relative">
+              {loading && (
+                <div className="absolute inset-0 bg-white/70 flex justify-center items-center z-50 transition duration-300">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand-500 border-t-transparent shadow-md"></div>
+                    <span className="text-sm font-bold text-slate-500">
+                      Loading Patient Portal...
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {currentScreen === "loading" && (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand-500 border-t-transparent shadow-md"></div>
+                  <span className="text-sm font-bold text-slate-500">
+                    Initializing...
+                  </span>
+                </div>
+              )}
+
+              {currentScreen === "login" && (
+                <LoginScreen
+                  auth={auth}
+                  db={db}
+                  logLoginActivity={logLoginActivity}
+                  showToast={showToast}
+                  setLoading={setLoading}
+                />
+              )}
+
+              {currentScreen === "signup" && (
+                <SignUpScreen
+                  auth={auth}
+                  db={db}
+                  showToast={showToast}
+                  setLoading={setLoading}
+                />
+              )}
+
+              {currentScreen === "forgot-password" && (
+                <ForgotPasswordScreen
+                  auth={auth}
+                  showToast={showToast}
+                  setLoading={setLoading}
+                />
+              )}
+
+              {currentScreen === "dashboard" && (
+                <DashboardContainer
+                  user={user}
+                  profile={profile}
+                  db={db}
+                  showToast={showToast}
+                />
+              )}
+            </main>
+
+            {/* Toast Container */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+              {toasts.map((t) => (
+                <div
+                  key={t.id}
+                  className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-semibold transition duration-300 animate-slide-in ${
+                    t.type === "success"
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-100"
+                      : "bg-rose-50 text-rose-800 border-rose-100"
+                  }`}
+                >
+                  <Icon
+                    name={t.type === "success" ? "checkCircle" : "alert"}
+                    className={`w-5 h-5 ${t.type === "success" ? "text-emerald-500" : "text-rose-500"}`}
+                  />
+                  <span>{t.message}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <footer className="py-4 text-center text-xs font-semibold text-slate-400 bg-white border-t border-slate-100">
+              &copy; {new Date().getFullYear()} Lifecare360 Network. Connected
+              Care. Anytime. Anywhere.
+            </footer>
+          </div>
+        );
+      };
+
+      // --- LOGIN SCREEN ---
+      const LoginScreen = ({
+        auth,
+        db,
+        logLoginActivity,
+        showToast,
+        setLoading,
+      }) => {
+        const [email, setEmail] = useState("");
+        const [password, setPassword] = useState("");
+        const [showPassword, setShowPassword] = useState(false);
+
+        const handleLogin = async (e) => {
+          e.preventDefault();
+          if (!auth) {
+            showToast("Firebase must be configured first.", "error");
+            return;
+          }
+          setLoading(true);
+          try {
+            const userCredential = await signInWithEmailAndPassword(
+              auth,
+              email,
+              password,
+            );
+            const loggedInUser = userCredential.user;
+
+            const snapshot = await get(ref(db, `users/${loggedInUser.uid}`));
+            if (snapshot.exists()) {
+              const dbProfile = snapshot.val();
+              const dbRole = dbProfile.role.toLowerCase();
+
+              if (dbRole !== ROLE_KEY) {
+                showToast(
+                  `Access Mismatch: This account is registered as a ${dbProfile.role}.`,
+                  "error",
+                );
+                await logLoginActivity(
+                  email,
+                  `Failed (Role Mismatch: ${dbRole})`,
+                  loggedInUser.uid,
+                );
+                await signOut(auth);
+              } else {
+                showToast("Login successful!");
+                await logLoginActivity(email, "Success", loggedInUser.uid);
+                window.location.hash = "dashboard";
+              }
+            } else {
+              showToast("User profile node missing in database.", "error");
+              await signOut(auth);
+            }
+          } catch (err) {
+            console.error(err);
+            let errorMsg = "Login failed: Incorrect email or password.";
+            if (
+              err.code === "auth/invalid-credential" ||
+              err.code === "auth/wrong-password"
+            ) {
+              errorMsg = "Incorrect password or login details.";
+            }
+            showToast(errorMsg, "error");
+            await logLoginActivity(email, "Failed");
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+            <div
+              className={`absolute top-0 inset-x-0 h-2 bg-gradient-to-r ${ROLE_INFO.color}`}
+            ></div>
+
+            <div className="text-center mb-6">
+              <div
+                className={`w-14 h-14 rounded-2xl bg-gradient-to-tr ${ROLE_INFO.color} text-white flex items-center justify-center mx-auto mb-4 shadow-lg`}
+              >
+                <Icon name={ROLE_INFO.icon} className="w-7 h-7" />
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-800">
+                {ROLE_INFO.label} Log In
+              </h2>
+              <p className="text-sm font-semibold text-slate-400 mt-1">
+                LIFECARE360 Access Portal
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium text-slate-800"
+                  placeholder="Enter registered email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium text-slate-800 pr-12"
+                    placeholder="Enter password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                  >
+                    <Icon
+                      name={showPassword ? "eyeOff" : "eye"}
+                      className="w-5 h-5"
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 text-slate-500 cursor-pointer font-semibold">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded text-brand-500 border-slate-300 focus:ring-brand-500"
+                  />
+                  Remember Me
+                </label>
+                <a
+                  href="#forgot-password"
+                  className="text-brand-600 hover:text-brand-700 font-bold"
+                >
+                  Forgot Password?
+                </a>
+              </div>
+
+              <button
+                type="submit"
+                className={`w-full py-3.5 rounded-xl font-extrabold text-white bg-gradient-to-r ${ROLE_INFO.color} shadow-lg transition duration-200`}
+              >
+                Sign In
+              </button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3 text-center">
+              <p className="text-sm font-semibold text-slate-500">
+                New to the platform?{" "}
+                <a
+                  href="#signup"
+                  className="text-brand-600 hover:text-brand-700 font-bold"
+                >
+                  Create Node Account
+                </a>
+              </p>
+              <a
+                href="index.html"
+                className="text-sm font-bold text-slate-400 hover:text-slate-600"
+              >
+                Back to Role Portal
+              </a>
+            </div>
+          </div>
+        );
+      };
+
+      // --- SIGN UP SCREEN ---
+      const SignUpScreen = ({ auth, db, showToast, setLoading }) => {
+        const [formData, setFormData] = useState({});
+        const [errors, setErrors] = useState({});
+        const [showPassword, setShowPassword] = useState(false);
+
+        const handleFieldChange = (field, value) => {
+          setFormData((prev) => ({ ...prev, [field]: value }));
+          if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
+        };
+
+        const handleSignUp = async (e) => {
+          e.preventDefault();
+
+          const newErrors = {};
+          if (formData.password !== formData.confirmPassword) {
+            newErrors.confirmPassword = "Passwords do not match.";
+          }
+          if (formData.password && formData.password.length < 6) {
+            newErrors.password = "Password must be at least 6 characters.";
+          }
+
+          if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+          }
+
+          if (!auth) {
+            showToast("Firebase must be configured first.", "error");
+            return;
+          }
+
+          setLoading(true);
+          try {
+            const userCredential = await createUserWithEmailAndPassword(
+              auth,
+              formData.email,
+              formData.password,
+            );
+            const newUser = userCredential.user;
+
+            const profileNode = {
+              uid: newUser.uid,
+              name: formData.fullName || "Lifecare Patient",
+              email: formData.email,
+              phone: formData.phone || "",
+              role: ROLE_KEY,
+              age: formData.age || "",
+              gender: formData.gender || "",
+              address: formData.address || "",
+              createdAt: new Date().toISOString(),
+            };
+
+            await set(ref(db, `users/${newUser.uid}`), profileNode);
+            showToast("Registration successful! Patient profile loaded.");
+            window.location.hash = "dashboard";
+          } catch (err) {
+            console.error(err);
+            let msg = "Signup failed. Review field values.";
+            if (err.code === "auth/email-already-in-use") {
+              msg = "Email address is already registered.";
+            }
+            showToast(msg, "error");
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <div className="w-full max-w-2xl bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden my-6">
+            <div
+              className={`absolute top-0 inset-x-0 h-2 bg-gradient-to-r ${ROLE_INFO.color}`}
+            ></div>
+
+            <div className="text-center mb-6">
+              <div
+                className={`w-14 h-14 rounded-2xl bg-gradient-to-tr ${ROLE_INFO.color} text-white flex items-center justify-center mx-auto mb-4 shadow-lg`}
+              >
+                <Icon name={ROLE_INFO.icon} className="w-7 h-7" />
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-800">
+                {ROLE_INFO.label} Registration
+              </h2>
+              <p className="text-sm font-semibold text-slate-400 mt-1">
+                Register new patient authentication node
+              </p>
+            </div>
+
+            <form onSubmit={handleSignUp} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <FormField
+                  label="Full Name"
+                  type="text"
+                  required
+                  onChange={(v) => handleFieldChange("fullName", v)}
+                />
+                <FormField
+                  label="DOB / Age"
+                  type="text"
+                  required
+                  placeholder="YYYY-MM-DD or Age"
+                  onChange={(v) => handleFieldChange("age", v)}
+                />
+                <FormSelect
+                  label="Gender"
+                  options={[
+                    "Male",
+                    "Female",
+                    "Non-binary",
+                    "Prefer not to say",
+                  ]}
+                  onChange={(v) => handleFieldChange("gender", v)}
+                />
+                <FormField
+                  label="Phone Number"
+                  type="tel"
+                  required
+                  onChange={(v) => handleFieldChange("phone", v)}
+                />
+                <FormField
+                  className="md:col-span-2"
+                  label="Home Address"
+                  type="textarea"
+                  required
+                  onChange={(v) => handleFieldChange("address", v)}
+                />
+
+                <div className="md:col-span-2 border-t border-slate-100 pt-5 mt-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <FormField
+                    label="Email Address"
+                    type="email"
+                    required
+                    onChange={(v) => handleFieldChange("email", v)}
+                  />
+                  <div className="h-1 flex md:hidden col-span-1"></div>
+
+                  <div>
+                    <FormField
+                      label="Password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      onChange={(v) => handleFieldChange("password", v)}
+                    />
+                    {errors.password && (
+                      <span className="text-xs text-rose-500 font-bold mt-1 block">
+                        {errors.password}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <FormField
+                      label="Confirm Password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      onChange={(v) => handleFieldChange("confirmPassword", v)}
+                    />
+                    {errors.confirmPassword && (
+                      <span className="text-xs text-rose-500 font-bold mt-1 block">
+                        {errors.confirmPassword}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2 flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm text-slate-500 font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded text-brand-500 border-slate-300 focus:ring-brand-500"
+                        onChange={(e) => setShowPassword(e.target.checked)}
+                      />
+                      Show Passwords
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className={`w-full py-4 rounded-xl font-extrabold text-white bg-gradient-to-r ${ROLE_INFO.color} shadow-lg transition`}
+              >
+                Submit Registration
+              </button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3 text-center">
+              <p className="text-sm font-semibold text-slate-500">
+                Already have an account?{" "}
+                <a
+                  href="#login"
+                  className="text-brand-600 hover:text-brand-700 font-bold"
+                >
+                  Log In
+                </a>
+              </p>
+              <a
+                href="index.html"
+                className="text-sm font-bold text-slate-400 hover:text-slate-600"
+              >
+                Back to Role Portal
+              </a>
+            </div>
+          </div>
+        );
+      };
+
+      // Helper Form Field Component
+      const FormField = ({
+        label,
+        type = "text",
+        placeholder,
+        required,
+        onChange,
+        value,
+        className = "",
+      }) => {
+        const inputClass =
+          "w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium text-slate-800";
+        return (
+          <div className={`flex flex-col ${className}`}>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              {label}
+            </label>
+            {type === "textarea" ? (
+              <textarea
+                required={required}
+                placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+                onChange={(e) => onChange(e.target.value)}
+                value={value || ""}
+                rows={3}
+                className={inputClass}
+              />
+            ) : (
+              <input
+                type={type}
+                required={required}
+                placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+                onChange={(e) => onChange(e.target.value)}
+                value={value || ""}
+                className={inputClass}
+              />
+            )}
+          </div>
+        );
+      };
+
+      // Helper Select Component
+      const FormSelect = ({ label, options, onChange, className = "" }) => {
+        return (
+          <div className={`flex flex-col ${className}`}>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              {label}
+            </label>
+            <select
+              required
+              onChange={(e) => onChange(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-white focus:border-brand-500 font-medium text-slate-800"
+            >
+              <option value="">Select option</option>
+              {options.map((opt, i) => (
+                <option key={i} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      };
+
+      // --- FORGOT PASSWORD SCREEN ---
+      const ForgotPasswordScreen = ({ auth, showToast, setLoading }) => {
+        const [email, setEmail] = useState("");
+        const [sent, setSent] = useState(false);
+
+        const handleReset = async (e) => {
+          e.preventDefault();
+          if (!auth) {
+            showToast("Firebase must be configured first.", "error");
+            return;
+          }
+          setLoading(true);
+          try {
+            await sendPasswordResetEmail(auth, email);
+            showToast("Password reset link sent to your email.");
+            setSent(true);
+          } catch (err) {
+            console.error(err);
+            showToast(
+              "Failed to send reset link. Ensure the email is correct.",
+              "error",
+            );
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-2 bg-brand-500"></div>
+
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-brand-550 text-brand-500 flex items-center justify-center mx-auto mb-4">
+                <Icon name="lock" className="w-7 h-7" />
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-800">
+                Password Reset
+              </h2>
+              <p className="text-sm font-semibold text-slate-400 mt-1">
+                LIFECARE360 Recovery Node
+              </p>
+            </div>
+
+            {!sent ? (
+              <form onSubmit={handleReset} className="space-y-4">
+                <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                  Enter your registered email address and we'll send you a
+                  secure link to reset your workspace password.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium"
+                    placeholder="name@hospital.com"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3.5 rounded-xl font-extrabold text-white bg-brand-500 hover:bg-brand-600 shadow-md transition"
+                >
+                  Send Reset Link
+                </button>
+              </form>
+            ) : (
+              <div className="text-center py-4 space-y-4">
+                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl border border-emerald-100">
+                  <p className="text-sm font-bold">Email Sent Successfully!</p>
+                  <p className="text-xs font-medium mt-1">
+                    Check your inbox ({email}) for further instructions.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSent(false)}
+                  className="text-sm font-bold text-brand-600 hover:underline"
+                >
+                  Try Another Email
+                </button>
+              </div>
+            )}
+
+            <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+              <a
+                href="#login"
+                className="text-sm font-bold text-slate-400 hover:text-slate-600"
+              >
+                Back to Login
+              </a>
+            </div>
+          </div>
+        );
+      };
+
+      // --- DASHBOARDS ROUTER ---
+      const DashboardContainer = ({ user, profile, db, showToast }) => {
+        const roleProfile = profile || {
+          name: "Patient",
+          email: "",
+          role: "patient",
+        };
+
+        return (
+          <div className="w-full max-w-6xl mx-auto space-y-8 animate-fade-in py-4">
+            {/* User Welcome Header Banner */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm relative overflow-hidden">
+              <div
+                className={`absolute left-0 inset-y-0 w-3 bg-gradient-to-b ${ROLE_INFO.color}`}
+              ></div>
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Secure Node Dashboard
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-brand-50 text-brand-600 border border-brand-100`}
+                  >
+                    {ROLE_INFO.label}
+                  </span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  Welcome back, {roleProfile.name}
+                </h2>
+                <p className="text-slate-500 text-sm font-medium mt-1">
+                  Node Reference ID:{" "}
+                  <span className="font-mono text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                    {user?.uid}
+                  </span>
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col gap-1 text-xs font-semibold text-slate-500 max-w-xs w-full md:w-auto">
+                <div>
+                  Email:{" "}
+                  <span className="text-slate-800 font-bold">
+                    {roleProfile.email}
+                  </span>
+                </div>
+                {roleProfile.phone && (
+                  <div>
+                    Phone:{" "}
+                    <span className="text-slate-800 font-bold">
+                      {roleProfile.phone}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  Registered:{" "}
+                  <span className="text-slate-800 font-bold">
+                    {roleProfile.createdAt
+                      ? new Date(roleProfile.createdAt).toLocaleDateString()
+                      : "N/A"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <PatientDashboard
+              profile={roleProfile}
+              db={db}
+              showToast={showToast}
+            />
+          </div>
+        );
+      };
+
+      // --- SUB-DASHBOARD: PATIENT ---
+      const PatientDashboard = ({ profile, db, showToast }) => {
+        // Form fields
+        const [reason, setReason] = useState("");
+        const [location, setLocation] = useState("");
+        const [urgency, setUrgency] = useState("Moderate");
+
+        // AI Wizard modal & details
+        const [showWizard, setShowWizard] = useState(false);
+        const [wizardStep, setWizardStep] = useState(1);
+        const healthConcerns = [
+          {
+            label: "Heart / Chest-related concern",
+            departments: ["Cardiology", "General Medicine"],
+          },
+          { label: "Skin-related concern", departments: ["Dermatology"] },
+          { label: "Eye-related concern", departments: ["Ophthalmology"] },
+          {
+            label: "Ear / Nose / Throat concern",
+            departments: ["ENT", "General Medicine"],
+          },
+          {
+            label: "Bone / Joint / Muscle concern",
+            departments: ["Orthopedics"],
+          },
+          {
+            label: "Stomach / Digestive concern",
+            departments: ["Gastroenterology", "General Medicine"],
+          },
+          {
+            label: "Brain / Nerve-related concern",
+            departments: ["Neurology", "General Medicine"],
+          },
+          { label: "Child health concern", departments: ["Pediatrics"] },
+          { label: "Women's health concern", departments: ["Gynecology"] },
+          { label: "Dental concern", departments: ["Dentistry"] },
+          {
+            label: "General health concern",
+            departments: ["General Medicine"],
+          },
+          { label: "Other", departments: ["General Medicine"] },
+        ];
+        const [formData, setFormData] = useState({
+          name: profile.name || "",
+          age: profile.age || "30",
+          gender: profile.gender || "Prefer not to say",
+          bloodGroup: profile.bloodGroup || "",
+          symptoms: "Routine health consultation",
+          healthConcern: "General health concern",
+          selectedSpecialization: "General Medicine",
+          condition: "",
+          duration: "",
+          painLevel: 5,
+          emergencyLevel: "Normal",
+          existingConditions: "",
+          currentMedications: "",
+          allergies: "",
+          prefHospital: "Lifecare General Hospital",
+          prefLanguage: "English",
+          latitude: 13.0827,
+          longitude: 80.2707,
+        });
+
+        const [aiRecommendation, setAiRecommendation] = useState(null);
+        const [recDoctorsList, setRecDoctorsList] = useState([]);
+        const [selectedDocId, setSelectedDocId] = useState(null);
+        const [selectedSlot, setSelectedSlot] = useState("");
+        const [selectedSlotDate, setSelectedSlotDate] = useState("Today");
+        const [loadingAi, setLoadingAi] = useState(false);
+        const [emergencyAlert, setEmergencyAlert] = useState(null);
+        const [bookingConfirmation, setBookingConfirmation] = useState(null);
+
+        // Active bookings list
+        const [appointments, setAppointments] = useState([]);
+        const [doctors, setDoctors] = useState([]);
+        const [donors, setDonors] = useState([]);
+
+        // Filter donors
+        const [donorFilterType, setDonorFilterType] = useState("all");
+        const [donorFilterBlood, setDonorFilterBlood] = useState("all");
+        const [donorSearchLocation, setDonorSearchLocation] = useState("");
+
+        // Modals
+        const [viewPrescription, setViewPrescription] = useState(null);
+        const [activeConsultation, setActiveConsultation] = useState(null);
+        const [ratingDoctor, setRatingDoctor] = useState(null);
+        const [userRating, setUserRating] = useState(5);
+        const [chatMessage, setChatMessage] = useState("");
+        const [chatHistory, setChatHistory] = useState([
+          {
+            sender: "doctor",
+            text: "Hello! I am reviewing your health assessment results. How can I help you today?",
+          },
+        ]);
+
+        // Get current GPS location on modal mount
+        useEffect(() => {
+          if (showWizard) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  latitude: pos.coords.latitude,
+                  longitude: pos.coords.longitude,
+                }));
+              },
+              () => console.log("Using default location (Chennai)"),
+            );
+          }
+        }, [showWizard]);
+
+        // Load appointments, doctors, and donors
+        useEffect(() => {
+          if (!db) return;
+
+          // Merge doctor profiles with the live availability stored under users.
+          let doctorDirectory = [];
+          let doctorUsers = [];
+          const syncDoctors = () => {
+            const profiles = new Map(
+              doctorDirectory.map((doctor) => [
+                doctor.doctorId || doctor.uid,
+                doctor,
+              ]),
+            );
+            doctorUsers.forEach((doctor) => {
+              const key = doctor.doctorId || doctor.uid;
+              profiles.set(key, {
+                ...profiles.get(key),
+                ...doctor,
+                doctorId: key,
+              });
+            });
+            setDoctors(
+              Array.from(profiles.values()).map((doctor) => ({
+                ...doctor,
+                doctorId: doctor.doctorId || doctor.uid,
+              })),
+            );
+            const nextDoctors = Array.from(profiles.values()).map((doctor) => ({
+              ...doctor,
+              doctorId: doctor.doctorId || doctor.uid,
+            }));
+            setRecDoctorsList((current) =>
+              current.map(
+                (doctor) =>
+                  nextDoctors.find(
+                    (item) => item.doctorId === doctor.doctorId,
+                  ) || doctor,
+              ),
+            );
+          };
+
+          // Fetch doctors list
+          const docsRef = ref(db, "doctors");
+          const unsubscribeDoctors = onValue(docsRef, (snapshot) => {
+            doctorDirectory = snapshot.exists()
+              ? Object.values(snapshot.val())
+              : [];
+            syncDoctors();
+          });
+
+          // Fetch appointments matching this patient
+          const apptsRef = ref(db, "appointments");
+          onValue(apptsRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const list = Object.entries(snapshot.val())
+                .map(([id, val]) => ({ id, ...val }))
+                .filter((a) => a.patientId === profile.uid);
+              setAppointments(list);
+            } else {
+              setAppointments([]);
+            }
+          });
+
+          // Fetch donors list
+          const usersRef = ref(db, "users");
+          const unsubscribe = onValue(usersRef, (snapshot) => {
+            if (snapshot.exists()) {
+              doctorUsers = Object.values(snapshot.val()).filter(
+                (user) => user.role === "doctor",
+              );
+              syncDoctors();
+              const list = Object.values(snapshot.val()).filter(
+                (u) => u.role === "donor_blood" || u.role === "donor_organ",
+              );
+              setDonors(list);
+            } else {
+              setDonors([]);
+            }
+          });
+          return () => {
+            unsubscribeDoctors();
+            unsubscribe();
+          };
+        }, [db, profile]);
+
+        const triggerEmergency = async (e) => {
+          e.preventDefault();
+          if (!db) return;
+          const safeProfile = profile || {};
+          try {
+            const emergencyRef = push(ref(db, "emergencies"));
+            await set(emergencyRef, {
+              patientId: safeProfile.uid || "Anonymous",
+              patientName: safeProfile.name || "Patient",
+              reason: reason,
+              location: location,
+              urgency: urgency,
+              timestamp: new Date().toISOString(),
+              status: "Pending Dispatch",
+            });
+            showToast(`Emergency broadcast sent! Urgency: ${urgency}`);
+            setReason("");
+            setLocation("");
+            setUrgency("Moderate");
+          } catch (err) {
+            showToast("Failed to dispatch emergency.", "error");
+          }
+        };
+
+        const reportAssessmentEmergency = async (requestAmbulance = false) => {
+          if (!db) return;
+          const safeProfile = profile || {};
+          try {
+            const emergencyRef = push(ref(db, "emergencies"));
+            await set(emergencyRef, {
+              patientId: safeProfile.uid || "Anonymous",
+              patientName: safeProfile.name || "Patient",
+              reason:
+                formData.healthConcern ||
+                formData.symptoms ||
+                "Urgent health concern",
+              location: formData.location || "My GPS Location",
+              urgency: formData.emergencyLevel,
+              timestamp: new Date().toISOString(),
+              status: "Pending Dispatch",
+            });
+            if (requestAmbulance) {
+              const transferRef = push(ref(db, "transfers"));
+              await set(transferRef, {
+                emergencyId: emergencyRef.key,
+                patientId: safeProfile.uid || "Anonymous",
+                patientName: safeProfile.name || "Patient",
+                status: "REQUESTED",
+                requestedAt: new Date().toISOString(),
+                patientLatitude: formData.latitude,
+                patientLongitude: formData.longitude,
+              });
+            }
+            showToast("Emergency reported to the response team.");
+            setShowWizard(false);
+          } catch (err) {
+            showToast("Failed to report emergency.", "error");
+          }
+        };
+
+        // Symptom to Specialization mapping rule
+        const mapSymptomToSpecialization = (symptomStr) => {
+          const text = (symptomStr || "").toLowerCase();
+          if (
+            text.includes("chest") ||
+            text.includes("heart") ||
+            text.includes("cardiac")
+          )
+            return "Cardiologist";
+          if (
+            text.includes("cough") ||
+            text.includes("breath") ||
+            text.includes("lung")
+          )
+            return "Pulmonologist";
+          if (
+            text.includes("diabetes") ||
+            text.includes("sugar") ||
+            text.includes("thyroid")
+          )
+            return "Endocrinologist";
+          if (
+            text.includes("kidney") ||
+            text.includes("renal") ||
+            text.includes("urine")
+          )
+            return "Nephrologist";
+          if (
+            text.includes("skin") ||
+            text.includes("allergy") ||
+            text.includes("rash")
+          )
+            return "Dermatologist";
+          if (text.includes("eye") || text.includes("vision"))
+            return "Ophthalmologist";
+          if (
+            text.includes("ear") ||
+            text.includes("nose") ||
+            text.includes("throat") ||
+            text.includes("ent")
+          )
+            return "ENT Specialist";
+          if (
+            text.includes("pregnancy") ||
+            text.includes("gyne") ||
+            text.includes("delivery")
+          )
+            return "Gynecologist";
+          if (
+            text.includes("child") ||
+            text.includes("pediatric") ||
+            text.includes("baby")
+          )
+            return "Pediatrician";
+          if (
+            text.includes("bone") ||
+            text.includes("fracture") ||
+            text.includes("muscle") ||
+            text.includes("joint")
+          )
+            return "Orthopedic Surgeon";
+          if (
+            text.includes("brain") ||
+            text.includes("neuro") ||
+            text.includes("paralysis") ||
+            text.includes("headache")
+          )
+            return "Neurologist";
+          if (
+            text.includes("mental") ||
+            text.includes("depression") ||
+            text.includes("psych")
+          )
+            return "Psychiatrist";
+          if (
+            text.includes("cancer") ||
+            text.includes("tumor") ||
+            text.includes("onco")
+          )
+            return "Oncologist";
+          if (
+            text.includes("trauma") ||
+            text.includes("accident") ||
+            text.includes("emergency")
+          )
+            return "Emergency Medicine Specialist";
+          return "General Physician";
+        };
+
+        // Local Fallback Recommendation Engine
+        const runLocalFallbackRecommendation = () => {
+          const selectedConcern = healthConcerns.find(
+            (concern) => concern.label === formData.healthConcern,
+          );
+          const suggestedSpecialization =
+            formData.selectedSpecialization ||
+            selectedConcern?.departments?.[0];
+          const specializationMatches = (doctor) => {
+            const value = (doctor.specialization || "").toLowerCase();
+            const target = (suggestedSpecialization || "").toLowerCase();
+            return (
+              value === target ||
+              (target === "cardiology" && value === "cardiologist") ||
+              (target === "orthopedics" && value.includes("orthopedic")) ||
+              (target === "ent" && value.includes("ent")) ||
+              (target === "gynecology" && value.includes("gynecologist")) ||
+              (target === "general medicine" &&
+                value.includes("general physician"))
+            );
+          };
+          const matches = doctors.filter(
+            (doctor) =>
+              doctor.availability === "Available" &&
+              specializationMatches(doctor),
+          );
+
+          // Calculate distances & wait times
+          const computed = matches.map((d) => {
+            const dist =
+              Math.sqrt(
+                Math.pow((d.latitude || 13.0827) - formData.latitude, 2) +
+                  Math.pow((d.longitude || 80.2707) - formData.longitude, 2),
+              ) * 111; // 1 deg ~ 111 km
+            const waitTime =
+              (d.currentPatients || 0) * (d.averageConsultationTime || 15);
+            return {
+              ...d,
+              calculatedDistance: dist.toFixed(1),
+              calculatedWaitingTime: waitTime,
+            };
+          });
+
+          // Sort: Available first, then lower workload, then distance
+          computed.sort((a, b) => {
+            if (a.calculatedWaitingTime !== b.calculatedWaitingTime)
+              return a.calculatedWaitingTime - b.calculatedWaitingTime;
+            const aHasSlots =
+              (a.todaySlots?.length || 0) + (a.tomorrowSlots?.length || 0);
+            const bHasSlots =
+              (b.todaySlots?.length || 0) + (b.tomorrowSlots?.length || 0);
+            if (aHasSlots !== bHasSlots) return bHasSlots - aHasSlots;
+            return a.calculatedDistance - b.calculatedDistance;
+          });
+
+          if (computed.length === 0) {
+            return {
+              unavailable: true,
+              suggestedSpecialization,
+              possibleDepartments: selectedConcern?.departments || [],
+            };
+          }
+
+          const best = computed[0];
+          const rec = {
+            recommendedDoctorId: best.doctorId,
+            recommendedDoctorName: best.name,
+            reason: `Based on your selected reason for visit, ${best.specialization} may be an appropriate department. This is only an appointment navigation suggestion.`,
+            appointmentNotes: [
+              "This department suggestion does not replace emergency medical care.",
+              "Bring your allergies and current medication details to the appointment.",
+            ],
+            suggestedSpecialization,
+            selectedSpecialization: suggestedSpecialization,
+            possibleDepartments: selectedConcern?.departments || [],
+            nearestHospital: best.hospital,
+            estimatedWaitingTime: `${best.calculatedWaitingTime} mins`,
+            distance: `${best.calculatedDistance} km`,
+            consultationFee: `\$${best.fee || 30}`,
+            availableSlot: best.todaySlots ? best.todaySlots[0] : "10:00 AM",
+            rating: best.rating || 5.0,
+            alternativeDoctors: computed.slice(1, 4).map((d) => ({
+              doctorId: d.doctorId,
+              name: d.name,
+              specialization: d.specialization,
+              waitingTime: `${d.calculatedWaitingTime} mins`,
+              distance: `${d.calculatedDistance} km`,
+            })),
+          };
+
+          return rec;
+        };
+
+        // Built-in appointment recommendation engine
+        const getRecommendation = () => {
+          setLoadingAi(true);
+          setAiRecommendation(null);
+          setRecDoctorsList([]);
+          setTimeout(() => {
+            setAiRecommendation(runLocalFallbackRecommendation());
+            setRecDoctorsList(doctors);
+            setLoadingAi(false);
+            setWizardStep(2);
+          }, 350);
+        };
+
+        const handleConfirmAppointment = async () => {
+          if (!db || !aiRecommendation) return;
+          const targetDocId =
+            selectedDocId || aiRecommendation.recommendedDoctorId;
+          const matchedDoc = recDoctorsList.find(
+            (d) => d.doctorId === targetDocId,
+          ) || { name: "Doctor", hospital: "Lifecare General Hospital" };
+          const safeProfile = profile || {};
+          if (matchedDoc.availability !== "Available") {
+            showToast(
+              "This doctor is no longer available. Please choose another available doctor.",
+              "error",
+            );
+            return;
+          }
+
+          try {
+            const apptRef = push(ref(db, "appointments"));
+            const timeSlot =
+              selectedSlot || aiRecommendation.availableSlot || "10:00 AM";
+
+            await set(apptRef, {
+              patientId: safeProfile.uid || "Anonymous",
+              patientName: safeProfile.name || "Patient",
+              doctorId: targetDocId,
+              doctorName: matchedDoc.name,
+              hospitalId: matchedDoc.hospitalId || "hosp_lifecare",
+              appointmentDate: selectedSlotDate,
+              appointmentTime: timeSlot,
+              healthConcern: formData.healthConcern,
+              suggestedSpecialization: aiRecommendation.suggestedSpecialization,
+              selectedSpecialization:
+                formData.selectedSpecialization ||
+                aiRecommendation.selectedSpecialization,
+              symptoms: formData.symptoms,
+              condition: formData.condition,
+              patientAge: formData.age,
+              patientGender: formData.gender,
+              duration: formData.duration,
+              painLevel: formData.painLevel,
+              medications: formData.currentMedications,
+              allergies: formData.allergies,
+              preferredHospital: formData.prefHospital,
+              location: {
+                latitude: formData.latitude,
+                longitude: formData.longitude,
+              },
+              specialization:
+                matchedDoc.specialization ||
+                mapSymptomToSpecialization(formData.symptoms),
+              emergencyLevel: formData.emergencyLevel,
+              status: "Booked",
+              createdAt: new Date().toISOString(),
+            });
+
+            // Handle Critical Emergencies immediately
+            if (formData.emergencyLevel === "Critical") {
+              const emergencyRef = push(ref(db, "emergencies"));
+              await set(emergencyRef, {
+                patientId: safeProfile.uid || "Anonymous",
+                patientName: safeProfile.name || "Patient",
+                reason: `AI Smart Critical Dispatch: ${formData.symptoms}`,
+                location: "My GPS Location",
+                urgency: "Critical",
+                notifiedSpecialists: doctors
+                  .filter(
+                    (doctor) =>
+                      doctor.specialization === matchedDoc.specialization,
+                  )
+                  .slice(0, 5)
+                  .map((doctor) => doctor.doctorId),
+                timestamp: new Date().toISOString(),
+                status: "Pending Dispatch",
+              });
+
+              // Set emergency alert details
+              setEmergencyAlert({
+                emergencyId: emergencyRef.key,
+                hospital: matchedDoc.hospital || "Lifecare General Hospital",
+                doctor: matchedDoc.name,
+                distance: aiRecommendation.distance || "1.5 km",
+                latitude: formData.latitude,
+                longitude: formData.longitude,
+              });
+            } else {
+              setBookingConfirmation({
+                doctorName: matchedDoc.name,
+                department:
+                  formData.selectedSpecialization ||
+                  aiRecommendation.selectedSpecialization,
+                date: selectedSlotDate,
+                time: timeSlot,
+              });
+              showToast(
+                "Appointment booked successfully! Awaiting doctor confirmation.",
+              );
+            }
+
+            setShowWizard(false);
+            setWizardStep(1);
+            setAiRecommendation(null);
+            setSelectedDocId(null);
+            setSelectedSlot("");
+            setSelectedSlotDate("Today");
+          } catch (err) {
+            showToast("Failed to book appointment.", "error");
+          }
+        };
+
+        const bookEmergencyAmbulance = async () => {
+          if (!db || !emergencyAlert) return;
+          try {
+            const transferRef = push(ref(db, "transfers"));
+            await set(transferRef, {
+              emergencyId: emergencyAlert.emergencyId,
+              patientId: (profile && profile.uid) || "Anonymous",
+              patientName: (profile && profile.name) || "Patient",
+              hospital: emergencyAlert.hospital,
+              status: "REQUESTED",
+              requestedAt: new Date().toISOString(),
+              patientLatitude: emergencyAlert.latitude,
+              patientLongitude: emergencyAlert.longitude,
+            });
+            showToast("Ambulance request sent to reception.");
+            setEmergencyAlert(null);
+          } catch (err) {
+            showToast("Failed to request ambulance.", "error");
+          }
+        };
+
+        const handleCancelAppointment = async (apptId) => {
+          if (!db) return;
+          try {
+            await set(ref(db, `appointments/${apptId}/status`), "Cancelled");
+            showToast("Appointment cancelled.");
+          } catch (err) {
+            showToast("Failed to cancel appointment.", "error");
+          }
+        };
+
+        const submitRating = async () => {
+          if (!db || !ratingDoctor) return;
+          try {
+            const docId = ratingDoctor.doctorId;
+            // Retrieve current ratings
+            const docRef = ref(db, `doctors/${docId}`);
+            const snap = await get(docRef);
+            if (snap.exists()) {
+              const data = snap.val();
+              const prevPatients = data.currentPatients || 0;
+              const newRating = parseFloat(
+                ((data.rating * 4 + userRating) / 5).toFixed(1),
+              ); // rolling avg
+              await set(ref(db, `doctors/${docId}/rating`), newRating);
+              showToast(
+                `Thank you! Rated Dr. ${ratingDoctor.doctorName} ${userRating} stars.`,
+              );
+            }
+            setRatingDoctor(null);
+          } catch (err) {
+            showToast("Failed to submit rating.", "error");
+          }
+        };
+
+        const handleSendMessage = () => {
+          if (!chatMessage.trim()) return;
+          setChatHistory((prev) => [
+            ...prev,
+            { sender: "patient", text: chatMessage },
+          ]);
+          const currentMsg = chatMessage;
+          setChatMessage("");
+
+          // Simulate doctor reply in 1.5s
+          setTimeout(() => {
+            let reply =
+              "I understand your condition. Let me review your medical records.";
+            if (
+              currentMsg.toLowerCase().includes("pain") ||
+              currentMsg.toLowerCase().includes("hurt")
+            ) {
+              reply =
+                "I recommend resting and keeping hydrated. I will generate your prescription shortly.";
+            }
+            setChatHistory((prev) => [
+              ...prev,
+              { sender: "doctor", text: reply },
+            ]);
+          }, 1500);
+        };
+
+        const filteredDonorsList = donors.filter((d) => {
+          const matchType =
+            donorFilterType === "all" ||
+            d.role ===
+              (donorFilterType === "blood" ? "donor_blood" : "donor_organ");
+          const matchBlood =
+            donorFilterBlood === "all" || d.bloodGroup === donorFilterBlood;
+          const matchLoc =
+            !donorSearchLocation ||
+            (d.location &&
+              d.location
+                .toLowerCase()
+                .includes(donorSearchLocation.toLowerCase())) ||
+            (d.address &&
+              d.address
+                .toLowerCase()
+                .includes(donorSearchLocation.toLowerCase()));
+          const isAvailable =
+            d.availability === "Available" || d.consent === true;
+          return matchType && matchBlood && matchLoc && isAvailable;
+        });
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Area */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Smart appointment action banner */}
+              <div className="bg-gradient-to-r from-brand-500 to-teal-600 rounded-3xl p-6 md:p-8 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <span className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide">
+                    Department Suggestion
+                  </span>
+                  <h3 className="text-2xl font-extrabold mt-2">
+                    Health Concern Doctor Suggestion
+                  </h3>
+                  <p className="text-xs text-brand-50/80 font-semibold mt-1">
+                    Select a health concern, review available departments and
+                    doctors, then book a visit.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowWizard(true);
+                    setWizardStep(1);
+                  }}
+                  className="px-6 py-3 bg-white text-teal-700 hover:bg-teal-50 rounded-2xl font-extrabold shadow transition duration-200"
+                >
+                  Book Smart Appointment
+                </button>
+              </div>
+
+              {/* Critical Emergency Alert Popup */}
+              {emergencyAlert && (
+                <div className="bg-red-50 border border-red-200 p-6 rounded-3xl shadow-lg border-l-8 border-l-red-600 animate-slide-in space-y-4">
+                  <h4 className="text-xl font-extrabold text-red-900 flex items-center gap-2">
+                    <Icon
+                      name="alert"
+                      className="w-6 h-6 text-red-600 animate-pulse"
+                    />
+                    CRITICAL EMERGENCY ESCALATION
+                  </h4>
+                  <p className="text-sm text-red-700 font-semibold leading-relaxed">
+                    Your emergency has been dispatched to the reception node and
+                    closest emergency specialists! The nearest specialist **Dr.{" "}
+                    {emergencyAlert.doctor}** at **{emergencyAlert.hospital}** (
+                    {emergencyAlert.distance} away) is alerted to prepare for
+                    immediate arrival.
+                  </p>
+                  <div className="h-40 rounded-2xl overflow-hidden border border-red-200">
+                    <iframe
+                      title="Nearest hospital map"
+                      className="w-full h-full"
+                      src={`https://www.openstreetmap.org/export/embed.html?layer=mapnik&marker=${emergencyAlert.latitude || 13.0827}%2C${emergencyAlert.longitude || 80.2707}`}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={bookEmergencyAmbulance}
+                      className="px-5 py-2.5 bg-red-600 text-white hover:bg-red-700 rounded-xl font-extrabold text-xs shadow transition"
+                    >
+                      Confirm & Book Nearest Ambulance
+                    </button>
+                    <button
+                      onClick={() => setEmergencyAlert(null)}
+                      className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs"
+                    >
+                      Dismiss Alert
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {bookingConfirmation && (
+                <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-3xl shadow-sm animate-slide-in">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">
+                        Appointment booked successfully
+                      </p>
+                      <h3 className="text-xl font-extrabold text-emerald-900 mt-1">
+                        Booking confirmed
+                      </h3>
+                      <p className="text-sm text-emerald-800 font-semibold mt-2">
+                        {bookingConfirmation.doctorName} ·{" "}
+                        {bookingConfirmation.department}
+                      </p>
+                      <p className="text-sm text-emerald-800 font-semibold">
+                        {bookingConfirmation.date} at {bookingConfirmation.time}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBookingConfirmation(null)}
+                      className="text-emerald-700 font-bold text-xs"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Patient's appointments list */}
+              <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-lg font-extrabold text-slate-800 mb-4">
+                  My Booked Appointments
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-400 uppercase text-[9px] font-extrabold tracking-wider">
+                        <th className="py-2.5 px-3">Doctor</th>
+                        <th className="py-2.5 px-3">Symptom / Detail</th>
+                        <th className="py-2.5 px-3">Date & Time</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
+                      {appointments.length > 0 ? (
+                        appointments.map((appt) => (
+                          <tr key={appt.id} className="hover:bg-slate-50/50">
+                            <td className="py-3.5 px-3 text-slate-900 font-extrabold">
+                              {appt.doctorName}
+                            </td>
+                            <td className="py-3.5 px-3">
+                              {appt.symptoms ||
+                                appt.condition ||
+                                "General consultation"}
+                            </td>
+                            <td className="py-3.5 px-3">
+                              {appt.appointmentDate} at {appt.appointmentTime}
+                            </td>
+                            <td className="py-3.5 px-3">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                  appt.status === "Pending"
+                                    ? "bg-sky-50 text-sky-700"
+                                    : appt.status === "Confirmed"
+                                      ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                      : appt.status === "Consultation Started"
+                                        ? "bg-amber-100 text-amber-800"
+                                        : appt.status ===
+                                            "Prescription Generated"
+                                          ? "bg-emerald-100 text-emerald-800 animate-pulse"
+                                          : appt.status === "Completed"
+                                            ? "bg-emerald-50 text-emerald-700"
+                                            : "bg-slate-100 text-slate-500"
+                                }`}
+                              >
+                                {appt.status}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-3 text-right space-x-1 whitespace-nowrap">
+                              {appt.status === "Prescription Generated" && (
+                                <button
+                                  onClick={() => setViewPrescription(appt)}
+                                  className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[10px] font-bold hover:bg-emerald-100"
+                                >
+                                  View Rx
+                                </button>
+                              )}
+                              {(appt.status === "Confirmed" ||
+                                appt.status === "Consultation Started") && (
+                                <button
+                                  onClick={() => setActiveConsultation(appt)}
+                                  className="px-2 py-1 bg-brand-50 text-brand-600 border border-brand-100 rounded text-[10px] font-bold hover:bg-brand-100"
+                                >
+                                  Join Consult
+                                </button>
+                              )}
+                              {appt.status === "Completed" && (
+                                <button
+                                  onClick={() => setRatingDoctor(appt)}
+                                  className="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[10px] font-bold"
+                                >
+                                  Rate Doc
+                                </button>
+                              )}
+                              {appt.status !== "Completed" &&
+                                appt.status !== "Cancelled" && (
+                                  <button
+                                    onClick={() =>
+                                      handleCancelAppointment(appt.id)
+                                    }
+                                    className="px-2 py-1 bg-slate-100 text-slate-500 rounded text-[10px] font-bold hover:bg-slate-200"
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan="5"
+                            className="text-center py-6 text-slate-400 font-bold"
+                          >
+                            No active bookings. Use "Book Smart Appointment" to
+                            get started.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Quick Emergency Dispatch Card */}
+              <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-lg font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                  <Icon name="alert" className="w-5 h-5 text-rose-500" />
+                  Report Urgent Medical Emergency
+                </h3>
+                <form onSubmit={triggerEmergency} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                        Emergency Details / Symptoms
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="e.g. Chest pain, difficulty breathing, car accident"
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-rose-500 text-sm font-semibold animate-slide-in"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                        Pickup Location / Address
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="e.g. 123 Main St, Apartment 4B"
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-rose-500 text-sm font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                        Severity / Urgency Level
+                      </label>
+                      <select
+                        value={urgency}
+                        onChange={(e) => setUrgency(e.target.value)}
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-rose-500 text-sm font-semibold bg-white"
+                      >
+                        <option value="Mild">Mild (Non-urgent checkup)</option>
+                        <option value="Moderate">
+                          Moderate (Urgent care needed)
+                        </option>
+                        <option value="Critical">
+                          Critical (Immediate danger / Difficult Case)
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-extrabold rounded-xl shadow-md transition"
+                  >
+                    Broadcast Emergency Signal
+                  </button>
+                </form>
+              </div>
+
+              {/* Available Donors Directory */}
+              <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-lg font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                  <Icon name="droplet" className="w-5 h-5 text-rose-500" />
+                  Find Available Donors (Near You)
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
+                      Donor Type
+                    </label>
+                    <select
+                      value={donorFilterType}
+                      onChange={(e) => setDonorFilterType(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-brand-500 text-xs font-semibold bg-white"
+                    >
+                      <option value="all">All Donors</option>
+                      <option value="blood">Blood Donors</option>
+                      <option value="organ">Organ Donors</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
+                      Blood Group
+                    </label>
+                    <select
+                      value={donorFilterBlood}
+                      onChange={(e) => setDonorFilterBlood(e.target.value)}
+                      disabled={donorFilterType === "organ"}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-brand-500 text-xs font-semibold bg-white disabled:bg-slate-50"
+                    >
+                      <option value="all">All Groups</option>
+                      {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
+                        (bg) => (
+                          <option key={bg} value={bg}>
+                            {bg}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
+                      Search Location / Area
+                    </label>
+                    <input
+                      type="text"
+                      value={donorSearchLocation}
+                      onChange={(e) => setDonorSearchLocation(e.target.value)}
+                      placeholder="Enter city or area name..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-brand-500 text-xs font-semibold"
+                    />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-400 uppercase text-[9px] font-extrabold tracking-wider">
+                        <th className="py-2.5 px-3">Name</th>
+                        <th className="py-2.5 px-3">Type</th>
+                        <th className="py-2.5 px-3">Blood / Preference</th>
+                        <th className="py-2.5 px-3">Location</th>
+                        <th className="py-2.5 px-3">Contact</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
+                      {filteredDonorsList.length > 0 ? (
+                        filteredDonorsList.map((donor, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50">
+                            <td className="py-3 px-3 text-slate-900 font-bold">
+                              {donor.name}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                                  donor.role === "donor_blood"
+                                    ? "bg-rose-50 text-rose-700"
+                                    : "bg-pink-50 text-pink-700"
+                                }`}
+                              >
+                                {donor.role === "donor_blood"
+                                  ? "🩸 Blood"
+                                  : "❤️ Organ"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-slate-800">
+                                {donor.role === "donor_blood"
+                                  ? donor.bloodGroup
+                                  : donor.organPreference || "All Organs"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 truncate max-w-[150px]">
+                              {donor.location || donor.address || "N/A"}
+                            </td>
+                            <td className="py-3 px-3">
+                              <a
+                                href={`tel:${donor.phone}`}
+                                className="px-2.5 py-1 bg-brand-500 text-white rounded-lg text-[10px] font-bold hover:bg-brand-600 transition inline-block text-center shadow-sm"
+                              >
+                                Call
+                              </a>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan="5"
+                            className="text-center py-6 text-slate-400 font-bold"
+                          >
+                            No available donors found in this location.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Medical Info */}
+              <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-lg font-extrabold text-slate-800 mb-4">
+                  Patient Health Profile
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 font-bold uppercase tracking-wide text-[10px] block mb-1">
+                      DOB / Age
+                    </span>
+                    <span className="text-slate-800 font-extrabold">
+                      {profile.age || "Not specified"}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 font-bold uppercase tracking-wide text-[10px] block mb-1">
+                      Gender
+                    </span>
+                    <span className="text-slate-800 font-extrabold">
+                      {profile.gender || "Not specified"}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 col-span-2 md:col-span-1">
+                    <span className="text-slate-400 font-bold uppercase tracking-wide text-[10px] block mb-1">
+                      Address
+                    </span>
+                    <span className="text-slate-800 font-extrabold line-clamp-1">
+                      {profile.address || "Not specified"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6 col-span-1">
+              <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-md font-extrabold text-slate-800 mb-4">
+                  Urgent Services
+                </h3>
+                <div className="flex flex-col gap-3">
+                  <a
+                    href="donor_blood.html"
+                    className="p-3 bg-brand-50 hover:bg-brand-100 border border-brand-100 text-brand-800 rounded-2xl font-bold text-sm block text-center transition"
+                  >
+                    Find Local Blood Donors
+                  </a>
+                  <a
+                    href="donor_organ.html"
+                    className="p-3 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-800 rounded-2xl font-bold text-sm block text-center transition"
+                  >
+                    Register Organ Consent
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* --- WIZARD MODAL SCREEN --- */}
+            {showWizard && (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
+                <div className="bg-white border border-slate-100 w-full max-w-2xl rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-slide-in relative">
+                  <header className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-tr from-brand-50/20 to-teal-50/10">
+                    <div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-brand-50 text-brand-600 border border-brand-100">
+                        Step {wizardStep} of 2
+                      </span>
+                      <h4 className="text-xl font-extrabold text-slate-900 mt-2">
+                        Doctor Appointment Booking
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setShowWizard(false)}
+                      className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 transition"
+                    >
+                      Close
+                    </button>
+                  </header>
+
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {wizardStep === 1 ? (
+                      <div className="space-y-4">
+                        <div className="bg-brand-50 border border-brand-100 p-4 rounded-2xl text-xs text-brand-800 font-semibold">
+                          Choose a health concern to find an appropriate
+                          hospital department. This is appointment navigation
+                          only, not a diagnosis or treatment recommendation.
+                        </div>
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            Health Concern / Reason for Visit
+                          </label>
+                          <input
+                            list="health-concern-options"
+                            value={formData.healthConcern}
+                            onChange={(event) => {
+                              const concern = healthConcerns.find(
+                                (item) => item.label === event.target.value,
+                              );
+                              setFormData((prev) => ({
+                                ...prev,
+                                healthConcern: event.target.value,
+                                selectedSpecialization:
+                                  concern?.departments?.[0] || "",
+                              }));
+                            }}
+                            placeholder="Search health concern..."
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium text-slate-800"
+                            required
+                          />
+                          <datalist id="health-concern-options">
+                            {healthConcerns.map((concern) => (
+                              <option
+                                key={concern.label}
+                                value={concern.label}
+                              />
+                            ))}
+                          </datalist>
+                          {formData.healthConcern && (
+                            <div className="bg-white border border-brand-100 rounded-2xl p-4 text-sm text-slate-700">
+                              <div className="font-extrabold text-brand-700">
+                                Suggested Department:{" "}
+                                {formData.selectedSpecialization}
+                              </div>
+                              <p className="text-xs font-semibold mt-1">
+                                Based on your selected reason for visit,{" "}
+                                {formData.selectedSpecialization} may be an
+                                appropriate department. Please confirm your
+                                choice.
+                              </p>
+                              {(healthConcerns.find(
+                                (item) => item.label === formData.healthConcern,
+                              )?.departments?.length || 0) > 1 && (
+                                <div className="mt-3">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                    Possible Departments
+                                  </span>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {healthConcerns
+                                      .find(
+                                        (item) =>
+                                          item.label === formData.healthConcern,
+                                      )
+                                      .departments.map((department) => (
+                                        <button
+                                          type="button"
+                                          key={department}
+                                          onClick={() =>
+                                            setFormData((prev) => ({
+                                              ...prev,
+                                              selectedSpecialization:
+                                                department,
+                                            }))
+                                          }
+                                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${formData.selectedSpecialization === department ? "bg-brand-500 text-white border-brand-500" : "bg-slate-50 text-slate-600 border-slate-200"}`}
+                                        >
+                                          {department}
+                                        </button>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            label="Name"
+                            type="text"
+                            required
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, name: v }))
+                            }
+                            value={formData.name}
+                          />
+                          <FormField
+                            label="Age"
+                            type="number"
+                            required
+                            placeholder="Enter age"
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, age: v }))
+                            }
+                            value={formData.age}
+                          />
+                          <FormSelect
+                            label="Gender"
+                            options={[
+                              "Female",
+                              "Male",
+                              "Non-binary",
+                              "Prefer not to say",
+                            ]}
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, gender: v }))
+                            }
+                          />
+                          <FormField
+                            label="Symptoms"
+                            type="text"
+                            required
+                            placeholder="e.g. Chest pain, dry cough, skin rashes"
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, symptoms: v }))
+                            }
+                            value={formData.symptoms}
+                          />
+                          <FormField
+                            label="Known Disease / Condition"
+                            type="text"
+                            placeholder="e.g. Hypertension, Diabetes Type 2"
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, condition: v }))
+                            }
+                            value={formData.condition}
+                          />
+                          <FormField
+                            label="Symptom Duration"
+                            type="text"
+                            placeholder="e.g. 3 days, 1 week"
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, duration: v }))
+                            }
+                            value={formData.duration}
+                          />
+
+                          <div className="flex flex-col">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                              Pain Level (1-10)
+                            </label>
+                            <input
+                              type="range"
+                              min="1"
+                              max="10"
+                              value={formData.painLevel}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  painLevel: parseInt(e.target.value),
+                                }))
+                              }
+                              className="h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-500 mt-2"
+                            />
+                            <span className="text-xs text-brand-600 font-extrabold mt-1 text-right">
+                              {formData.painLevel} / 10
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                              Emergency Level
+                            </label>
+                            <select
+                              value={formData.emergencyLevel}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  emergencyLevel: e.target.value,
+                                }))
+                              }
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-white font-semibold text-sm"
+                            >
+                              <option value="Normal">Normal</option>
+                              <option value="Urgent">Urgent</option>
+                              <option value="Critical">Critical</option>
+                            </select>
+                            {formData.emergencyLevel !== "Normal" && (
+                              <div className="md:col-span-2 mt-3 bg-red-50 border border-red-200 rounded-2xl p-4 text-red-800">
+                                <p className="text-sm font-extrabold">
+                                  If this is a medical emergency, do not wait
+                                  for a routine appointment.
+                                </p>
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      reportAssessmentEmergency(false)
+                                    }
+                                    className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-extrabold"
+                                  >
+                                    Report Emergency
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      reportAssessmentEmergency(true)
+                                    }
+                                    className="px-3 py-2 bg-white border border-red-300 text-red-700 rounded-lg text-xs font-extrabold"
+                                  >
+                                    Request Ambulance
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <FormField
+                            label="Existing Conditions"
+                            type="text"
+                            placeholder="e.g. Asthma"
+                            onChange={(v) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                existingConditions: v,
+                              }))
+                            }
+                            value={formData.existingConditions}
+                          />
+                          <FormField
+                            label="Current Medications"
+                            type="text"
+                            placeholder="e.g. Metformin"
+                            onChange={(v) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                currentMedications: v,
+                              }))
+                            }
+                            value={formData.currentMedications}
+                          />
+                          <FormField
+                            label="Allergies"
+                            type="text"
+                            placeholder="e.g. Penicillin"
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, allergies: v }))
+                            }
+                            value={formData.allergies}
+                          />
+                          <FormField
+                            label="Location"
+                            type="text"
+                            placeholder="Current area or address"
+                            onChange={(v) =>
+                              setFormData((prev) => ({ ...prev, location: v }))
+                            }
+                            value={formData.location}
+                          />
+                          <FormSelect
+                            label="Preferred Hospital"
+                            options={[
+                              "Lifecare General Hospital",
+                              "City Trauma & Emergency Care",
+                              "Apex Heart & ICU Center",
+                            ]}
+                            onChange={(v) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                prefHospital: v,
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {loadingAi ? (
+                          <div className="py-12 flex flex-col items-center justify-center gap-3">
+                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand-500 border-t-transparent"></div>
+                            <span className="text-sm font-bold text-slate-500">
+                              Checking available departments and doctors...
+                            </span>
+                          </div>
+                        ) : aiRecommendation &&
+                          !aiRecommendation.unavailable ? (
+                          <div className="space-y-6">
+                            {/* Recommended Doctor Glass Card */}
+                            <div className="bg-gradient-to-tr from-brand-50 to-teal-50/50 border border-brand-100/50 rounded-3xl p-6 shadow-md relative overflow-hidden">
+                              <span className="absolute top-4 right-4 bg-brand-500 text-white text-[9px] font-extrabold uppercase px-2.5 py-1 rounded-full shadow-sm">
+                                Available Department Match
+                              </span>
+                              <span className="text-slate-400 font-extrabold uppercase text-[10px] tracking-wider">
+                                Available doctor for your selected department
+                              </span>
+                              <h5 className="text-xl font-extrabold text-slate-800 mt-1">
+                                {aiRecommendation.recommendedDoctorName}
+                              </h5>
+                              <p className="text-xs text-slate-400 font-semibold">
+                                Specialization:{" "}
+                                <span className="text-brand-600 font-bold">
+                                  {recDoctorsList.find(
+                                    (d) =>
+                                      d.doctorId ===
+                                      aiRecommendation.recommendedDoctorId,
+                                  )?.specialization || "Physician"}
+                                </span>
+                              </p>
+                              <div className="flex flex-wrap gap-3 mt-3 text-xs font-bold">
+                                <span
+                                  className={
+                                    recDoctorsList.find(
+                                      (doctor) =>
+                                        doctor.doctorId ===
+                                        aiRecommendation.recommendedDoctorId,
+                                    )?.availability === "Available"
+                                      ? "text-emerald-600"
+                                      : "text-rose-600"
+                                  }
+                                >
+                                  {recDoctorsList.find(
+                                    (doctor) =>
+                                      doctor.doctorId ===
+                                      aiRecommendation.recommendedDoctorId,
+                                  )?.availability === "Available"
+                                    ? "Available"
+                                    : "Unavailable"}
+                                </span>
+                                <span className="text-slate-500">
+                                  Queue:{" "}
+                                  {recDoctorsList.find(
+                                    (doctor) =>
+                                      doctor.doctorId ===
+                                      aiRecommendation.recommendedDoctorId,
+                                  )?.currentWorkload ||
+                                    recDoctorsList.find(
+                                      (doctor) =>
+                                        doctor.doctorId ===
+                                        aiRecommendation.recommendedDoctorId,
+                                    )?.currentPatients ||
+                                    0}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-100 font-semibold text-xs text-slate-500">
+                                <div>
+                                  Fee:{" "}
+                                  <span className="block text-slate-800 font-bold mt-0.5">
+                                    {aiRecommendation.consultationFee}
+                                  </span>
+                                </div>
+                                <div>
+                                  Wait Time:{" "}
+                                  <span className="block text-slate-800 font-bold mt-0.5">
+                                    {aiRecommendation.estimatedWaitingTime}
+                                  </span>
+                                </div>
+                                <div>
+                                  Rating:{" "}
+                                  <span className="block text-slate-800 font-bold mt-0.5">
+                                    ⭐ {aiRecommendation.rating || "5.0"}
+                                  </span>
+                                </div>
+                                <div>
+                                  Distance:{" "}
+                                  <span className="block text-slate-800 font-bold mt-0.5">
+                                    {aiRecommendation.distance}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="bg-white/60 p-4 rounded-2xl border border-brand-100/30 mt-4 text-xs font-semibold text-brand-900 leading-relaxed shadow-sm">
+                                Department suggestion reason:{" "}
+                                {aiRecommendation.reason}
+                              </div>
+                              {aiRecommendation.appointmentNotes && (
+                                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 mt-3 text-xs font-semibold text-amber-900 leading-relaxed">
+                                  <span className="font-extrabold">
+                                    Appointment Notes
+                                  </span>
+                                  <ul className="list-disc ml-4 mt-1">
+                                    {aiRecommendation.appointmentNotes.map(
+                                      (precaution, index) => (
+                                        <li key={index}>{precaution}</li>
+                                      ),
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+                              <p className="text-[10px] text-slate-500 font-semibold mt-3">
+                                Department suggestions are provided only to help
+                                with appointment navigation based on the
+                                selected reason for visit. They are not medical
+                                diagnoses or treatment recommendations. For
+                                emergencies, use the Emergency Response option.
+                              </p>
+                            </div>
+
+                            {/* Time Slots Selection */}
+                            <div>
+                              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                Available Consultation Slots
+                              </label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {(
+                                  recDoctorsList.find(
+                                    (d) =>
+                                      d.doctorId ===
+                                      (selectedDocId ||
+                                        aiRecommendation.recommendedDoctorId),
+                                  )?.todaySlots || [
+                                    "09:00 AM",
+                                    "10:30 AM",
+                                    "11:30 AM",
+                                  ]
+                                ).map((slot) => (
+                                  <button
+                                    key={slot}
+                                    onClick={() => {
+                                      setSelectedSlot(slot);
+                                      setSelectedSlotDate("Today");
+                                    }}
+                                    className={`p-3 rounded-xl border text-xs font-extrabold transition ${
+                                      (selectedSlot ||
+                                        aiRecommendation.availableSlot) === slot
+                                        ? "bg-brand-500 text-white border-brand-500 shadow-md"
+                                        : "bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    {slot}
+                                  </button>
+                                ))}
+                              </div>
+                              {recDoctorsList.find(
+                                (d) =>
+                                  d.doctorId ===
+                                  (selectedDocId ||
+                                    aiRecommendation.recommendedDoctorId),
+                              )?.tomorrowSlots?.length > 0 && (
+                                <div className="mt-3">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                    Tomorrow
+                                  </span>
+                                  <div className="grid grid-cols-3 gap-2 mt-2">
+                                    {recDoctorsList
+                                      .find(
+                                        (d) =>
+                                          d.doctorId ===
+                                          (selectedDocId ||
+                                            aiRecommendation.recommendedDoctorId),
+                                      )
+                                      .tomorrowSlots.map((slot) => (
+                                        <button
+                                          key={`tomorrow-${slot}`}
+                                          onClick={() => {
+                                            setSelectedSlot(slot);
+                                            setSelectedSlotDate("Tomorrow");
+                                          }}
+                                          className={`p-3 rounded-xl border text-xs font-extrabold transition ${selectedSlot === slot && selectedSlotDate === "Tomorrow" ? "bg-brand-500 text-white border-brand-500 shadow-md" : "bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100"}`}
+                                        >
+                                          {slot}
+                                        </button>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Alternative Doctors */}
+                            {aiRecommendation.alternativeDoctors &&
+                              aiRecommendation.alternativeDoctors.length >
+                                0 && (
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                                    Alternative Matches
+                                  </label>
+                                  <div className="space-y-2">
+                                    {aiRecommendation.alternativeDoctors.map(
+                                      (alt) => (
+                                        <div
+                                          key={alt.doctorId}
+                                          onClick={() =>
+                                            setSelectedDocId(alt.doctorId)
+                                          }
+                                          className={`flex justify-between items-center p-3 rounded-2xl border cursor-pointer transition ${
+                                            selectedDocId === alt.doctorId
+                                              ? "bg-brand-50 border-brand-200"
+                                              : "bg-white border-slate-100 hover:bg-slate-50"
+                                          }`}
+                                        >
+                                          <div>
+                                            <div className="text-xs font-bold text-slate-800">
+                                              {alt.name}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                              {alt.specialization}
+                                            </div>
+                                          </div>
+                                          <div className="text-right text-[10px] font-semibold text-slate-400">
+                                            <div>
+                                              Dist:{" "}
+                                              <span className="text-slate-800 font-bold">
+                                                {alt.distance}
+                                              </span>
+                                            </div>
+                                            <div>
+                                              Wait:{" "}
+                                              <span className="text-slate-800 font-bold">
+                                                {alt.waitingTime}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 space-y-3">
+                            <div className="text-rose-700 font-extrabold">
+                              Required specialist is currently unavailable.
+                            </div>
+                            <p className="text-xs text-slate-500 font-semibold">
+                              Please consult the hospital/help desk for further
+                              assistance.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setWizardStep(1)}
+                              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold"
+                            >
+                              View Other Available Times
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <footer className="p-6 border-t border-slate-100 flex justify-between bg-slate-50">
+                    {wizardStep === 2 && (
+                      <button
+                        onClick={() => setWizardStep(1)}
+                        className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-100 transition"
+                      >
+                        Back
+                      </button>
+                    )}
+                    <div className="ml-auto">
+                      {wizardStep === 1 ? (
+                        formData.emergencyLevel === "Normal" && (
+                          <button
+                            onClick={getRecommendation}
+                            className="px-5 py-2.5 bg-brand-500 text-white rounded-xl font-extrabold text-xs hover:bg-brand-600 transition shadow-md"
+                          >
+                            Find Available Doctors
+                          </button>
+                        )
+                      ) : (
+                        <button
+                          onClick={handleConfirmAppointment}
+                          className="px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-extrabold text-xs hover:bg-emerald-600 transition shadow-md"
+                        >
+                          Confirm Booking
+                        </button>
+                      )}
+                    </div>
+                  </footer>
+                </div>
+              </div>
+            )}
+
+            {/* --- RX MODAL SCREEN --- */}
+            {viewPrescription && (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
+                <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4 animate-slide-in relative">
+                  <header className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h4 className="text-lg font-extrabold text-slate-900">
+                      Medical Prescription (Rx)
+                    </h4>
+                    <button
+                      onClick={() => setViewPrescription(null)}
+                      className="text-slate-400 hover:text-slate-600 font-bold"
+                    >
+                      X
+                    </button>
+                  </header>
+                  <div className="space-y-4 text-xs font-semibold text-slate-600">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                        Prescribed By
+                      </span>
+                      <span className="text-slate-800 font-extrabold text-sm">
+                        {viewPrescription.doctorName}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                        Diagnosis
+                      </span>
+                      <span className="text-slate-800 font-extrabold text-sm">
+                        {viewPrescription.diagnosis ||
+                          "General checkup diagnostics"}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                        Prescription Details
+                      </span>
+                      <span className="text-slate-800 font-extrabold font-mono leading-relaxed block whitespace-pre-wrap">
+                        {viewPrescription.prescription ||
+                          "Follow general rest precautions."}
+                      </span>
+                    </div>
+                    {viewPrescription.followUpDate && (
+                      <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                        <span className="text-[10px] text-indigo-400 uppercase font-bold block mb-1">
+                          Suggested Follow-Up Date
+                        </span>
+                        <span className="text-indigo-800 font-extrabold">
+                          {viewPrescription.followUpDate}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      showToast("Prescription downloaded as PDF.");
+                      setViewPrescription(null);
+                    }}
+                    className="w-full py-3 bg-brand-500 text-white hover:bg-brand-600 font-extrabold rounded-xl transition shadow"
+                  >
+                    Download prescription PDF
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* --- VIRTUAL CONSULTATION MODAL --- */}
+            {activeConsultation && (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
+                <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl flex flex-col h-[70vh] border border-slate-100 overflow-hidden animate-slide-in relative">
+                  <header className="p-4 border-b border-slate-100 bg-brand-500 text-white flex justify-between items-center">
+                    <div>
+                      <h4 className="text-md font-extrabold">
+                        Virtual Consultation Room
+                      </h4>
+                      <span className="text-[10px] font-bold opacity-80">
+                        Consultation with {activeConsultation.doctorName}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setActiveConsultation(null)}
+                      className="text-white hover:opacity-80 font-bold"
+                    >
+                      Leave Room
+                    </button>
+                  </header>
+
+                  <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50">
+                    {chatHistory.map((chat, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex ${chat.sender === "patient" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`p-3 rounded-2xl text-xs font-semibold max-w-xs shadow-sm ${
+                            chat.sender === "patient"
+                              ? "bg-brand-500 text-white rounded-tr-none"
+                              : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
+                          }`}
+                        >
+                          {chat.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <footer className="p-3 border-t border-slate-100 flex gap-2 bg-white">
+                    <input
+                      type="text"
+                      value={chatMessage}
+                      onChange={(e) => setChatMessage(e.target.value)}
+                      placeholder="Type message to doctor..."
+                      className="flex-1 px-4 py-2 border border-slate-200 rounded-xl outline-none focus:border-brand-500 text-xs font-semibold"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSendMessage();
+                      }}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      className="px-4 py-2 bg-brand-500 text-white font-extrabold rounded-xl text-xs shadow hover:bg-brand-600 transition"
+                    >
+                      Send
+                    </button>
+                  </footer>
+                </div>
+              </div>
+            )}
+
+            {/* --- RATING MODAL --- */}
+            {ratingDoctor && (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
+                <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4 animate-slide-in relative text-center">
+                  <header className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <h4 className="text-md font-extrabold text-slate-800">
+                      Rate Doctor
+                    </h4>
+                    <button
+                      onClick={() => setRatingDoctor(null)}
+                      className="text-slate-400 font-bold"
+                    >
+                      X
+                    </button>
+                  </header>
+                  <p className="text-xs text-slate-400 font-semibold">
+                    How would you rate your consultation experience with Dr.{" "}
+                    {ratingDoctor.doctorName}?
+                  </p>
+
+                  <div className="flex justify-center gap-2 py-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setUserRating(star)}
+                        className="text-3xl transition duration-100 hover:scale-110"
+                      >
+                        {star <= userRating ? "⭐" : "☆"}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={submitRating}
+                    className="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-extrabold rounded-xl transition shadow"
+                  >
+                    Submit Rating
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      // Render the React Application
+      const container = document.getElementById("root");
+      const root = ReactDOM.createRoot(container);
+      root.render(<App />);
+    </script>
+  </body>
+</html>

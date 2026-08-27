@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lifecare360 Hospital Receptionist Portal</title>
+  <link rel="icon" href="life.jpeg">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 & ReactDOM 18 -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel Standalone for JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Leaflet.js Mapping Library -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.5; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(0.95); opacity: 0.5; }
+    }
+    .pulse-logo {
+      animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes slide-in {
+      from { transform: translateY(1rem); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slide-in {
+      animation: slide-in 0.3s ease-out forwards;
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.4s ease-out forwards;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              900: '#115e59',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full text-slate-800">
+  <div id="root" class="h-full"></div>
+
+  <!-- Main script block executing JSX and ES Modules -->
+  <script type="text/babel" data-type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword, 
+      signOut, 
+      sendPasswordResetEmail, 
+      onAuthStateChanged 
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { 
+      getDatabase, 
+      ref, 
+      set, 
+      get, 
+      child, 
+      push, 
+      onValue, 
+      serverTimestamp 
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+    const { useState, useEffect, useRef } = React;
+
+    // --- Embedded Custom SVG Icons (Lucide replacements) ---
+    const Icon = ({ name, className = "w-6 h-6", ...props }) => {
+      const icons = {
+        activity: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        ),
+        building: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+            <line x1="9" y1="22" x2="9" y2="16" />
+            <line x1="15" y1="22" x2="15" y2="16" />
+            <line x1="9" y1="16" x2="15" y2="16" />
+            <path d="M8 6h8" />
+            <path d="M8 10h8" />
+          </svg>
+        ),
+        eye: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        ),
+        eyeOff: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+            <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+            <path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+            <line x1="2" y1="2" x2="22" y2="22" />
+          </svg>
+        ),
+        logout: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        ),
+        lock: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        ),
+        alert: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        ),
+        checkCircle: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+        ),
+        truck: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+            <circle cx="5.5" cy="18.5" r="2.5" />
+            <circle cx="18.5" cy="18.5" r="2.5" />
+          </svg>
+        ),
+        droplet: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
+          </svg>
+        )
+      };
+      return icons[name] || icons['activity'];
+    };
+
+    const ROLE_KEY = 'receptionist';
+    const ROLE_INFO = { label: "Hospital Reception", icon: "building", color: "from-sky-500 to-blue-600" };
+
+    const App = () => {
+      // Configuration & Firebase References
+      const [firebaseConfig] = useState(() => {
+        const saved = localStorage.getItem('lc_firebase_config');
+        return saved ? JSON.parse(saved) : {
+          apiKey: "AIzaSyAYN9lsXTxwoL9mqvPs2YbTnrYaIXAgOFE",
+          authDomain: "lifecare360-968fd.firebaseapp.com",
+          databaseURL: "https://lifecare360-968fd-default-rtdb.firebaseio.com",
+          projectId: "lifecare360-968fd",
+          storageBucket: "lifecare360-968fd.firebasestorage.app",
+          messagingSenderId: "872526740925",
+          appId: "1:872526740925:web:0feb7f631660778089e6d4"
+        };
+      });
+
+      const [firebaseApp, setFirebaseApp] = useState(null);
+      const [auth, setAuth] = useState(null);
+      const [db, setDb] = useState(null);
+
+      // Routing / UI States
+      const [currentScreen, setCurrentScreen] = useState('loading');
+      const [toasts, setToasts] = useState([]);
+      const [user, setUser] = useState(null);
+      const [profile, setProfile] = useState(null);
+      const [loading, setLoading] = useState(false);
+
+      const showToast = (message, type = 'success') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => {
+          setToasts(prev => prev.filter(t => t.id !== id));
+        }, 4000);
+      };
+
+      // Initialize Firebase App
+      useEffect(() => {
+        if (firebaseConfig.apiKey) {
+          try {
+            const app = initializeApp(firebaseConfig);
+            const authInstance = getAuth(app);
+            const dbInstance = getDatabase(app);
+            setFirebaseApp(app);
+            setAuth(authInstance);
+            setDb(dbInstance);
+          } catch (err) {
+            console.error("Firebase Init Error:", err);
+            showToast("Failed to initialize Firebase. Verify settings.", "error");
+          }
+        }
+      }, [firebaseConfig]);
+
+      // Auth State Listener
+      useEffect(() => {
+        if (!auth || !db) return;
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+          if (currentUser) {
+            setUser(currentUser);
+            setLoading(true);
+            try {
+              const userRef = ref(db, `users/${currentUser.uid}`);
+              const snapshot = await get(userRef);
+              if (snapshot.exists()) {
+                const data = snapshot.val();
+                if (data.role.toLowerCase() !== ROLE_KEY) {
+                  showToast("Mismatched Role: Access denied.", "error");
+                  await signOut(auth);
+                  setUser(null);
+                  setProfile(null);
+                  window.location.hash = "login";
+                  setCurrentScreen('login');
+                } else {
+                  setProfile(data);
+                  setCurrentScreen('dashboard');
+                  window.location.hash = "dashboard";
+                }
+              } else {
+                showToast("User profile not found in database.", "error");
+                await signOut(auth);
+                setUser(null);
+                setProfile(null);
+                window.location.hash = "login";
+                setCurrentScreen('login');
+              }
+            } catch (err) {
+              console.error(err);
+              showToast("Error checking user profile.", "error");
+              await signOut(auth);
+            } finally {
+              setLoading(false);
+            }
+          } else {
+            setUser(null);
+            setProfile(null);
+            if (window.location.hash === '#dashboard' || window.location.hash === '') {
+              window.location.hash = "login";
+              setCurrentScreen('login');
+            } else {
+              handleHashRouting();
+            }
+          }
+        });
+        return () => unsubscribe();
+      }, [auth, db]);
+
+      const handleHashRouting = () => {
+        const hash = window.location.hash.replace('#', '');
+        if (hash === 'signup') {
+          setCurrentScreen('signup');
+        } else if (hash === 'forgot-password') {
+          setCurrentScreen('forgot-password');
+        } else if (hash === 'dashboard') {
+          setCurrentScreen('dashboard');
+        } else {
+          setCurrentScreen('login');
+        }
+      };
+
+      useEffect(() => {
+        window.addEventListener('hashchange', handleHashRouting);
+        return () => window.removeEventListener('hashchange', handleHashRouting);
+      }, [auth]);
+
+      const logLoginActivity = async (email, status, userId = "") => {
+        if (!db) return;
+        try {
+          const logRef = push(ref(db, 'loginActivity'));
+          await set(logRef, {
+            userId: userId,
+            role: ROLE_KEY,
+            email: email,
+            timestamp: serverTimestamp(),
+            status: status
+          });
+        } catch (err) {
+          console.error("Activity Logging Error:", err);
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
+          
+          {/* Header */}
+          <header className="bg-white border-b border-slate-100 py-4 px-6 flex justify-between items-center z-10 shadow-sm">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = "index.html"}>
+              <div className="bg-brand-500 text-white p-2 rounded-xl shadow-md shadow-brand-500/20">
+                <Icon name="activity" className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="font-extrabold text-xl tracking-tight text-slate-900">LIFECARE<span className="text-brand-500">360</span></h1>
+                <p className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Connected Care Network</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {user && (
+                <button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await signOut(auth);
+                      showToast("Logged out successfully.");
+                      window.location.hash = "login";
+                    } catch (err) {
+                      showToast("Logout failed.", "error");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl font-bold flex items-center gap-2 text-sm transition"
+                >
+                  <Icon name="logout" className="w-4 h-4" />
+                  Logout
+                </button>
+              )}
+            </div>
+          </header>
+
+          {/* Main Area */}
+          <main className="flex-1 flex flex-col justify-center items-center p-4 md:p-8 relative">
+            {loading && (
+              <div className="absolute inset-0 bg-white/70 flex justify-center items-center z-50 transition duration-300">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand-500 border-t-transparent shadow-md"></div>
+                  <span className="text-sm font-bold text-slate-500">Loading Receptionist Portal...</span>
+                </div>
+              </div>
+            )}
+
+            {currentScreen === 'loading' && (
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand-500 border-t-transparent shadow-md"></div>
+                <span className="text-sm font-bold text-slate-500">Initializing...</span>
+              </div>
+            )}
+
+            {currentScreen === 'login' && (
+              <LoginScreen auth={auth} db={db} logLoginActivity={logLoginActivity} showToast={showToast} setLoading={setLoading} />
+            )}
+
+            {currentScreen === 'signup' && (
+              <SignUpScreen auth={auth} db={db} showToast={showToast} setLoading={setLoading} />
+            )}
+
+            {currentScreen === 'forgot-password' && (
+              <ForgotPasswordScreen auth={auth} showToast={showToast} setLoading={setLoading} />
+            )}
+
+            {currentScreen === 'dashboard' && (
+              <DashboardContainer user={user} profile={profile} db={db} showToast={showToast} />
+            )}
+          </main>
+
+          {/* Toast Container */}
+          <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+            {toasts.map(t => (
+              <div 
+                key={t.id} 
+                className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-semibold transition duration-300 animate-slide-in ${
+                  t.type === 'success' 
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
+                    : 'bg-rose-50 text-rose-800 border-rose-100'
+                }`}
+              >
+                <Icon name={t.type === 'success' ? 'checkCircle' : 'alert'} className={`w-5 h-5 ${t.type === 'success' ? 'text-emerald-500' : 'text-rose-500'}`} />
+                <span>{t.message}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <footer className="py-4 text-center text-xs font-semibold text-slate-400 bg-white border-t border-slate-100">
+            &copy; {new Date().getFullYear()} Lifecare360 Network. Connected Care. Anytime. Anywhere.
+          </footer>
+        </div>
+      );
+    };
+
+    // --- LOGIN SCREEN ---
+    const LoginScreen = ({ auth, db, logLoginActivity, showToast, setLoading }) => {
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [showPassword, setShowPassword] = useState(false);
+
+      const handleLogin = async (e) => {
+        e.preventDefault();
+        if (!auth) {
+          showToast("Firebase must be configured first.", "error");
+          return;
+        }
+        setLoading(true);
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const loggedInUser = userCredential.user;
+
+          const snapshot = await get(ref(db, `users/${loggedInUser.uid}`));
+          if (snapshot.exists()) {
+            const dbProfile = snapshot.val();
+            const dbRole = dbProfile.role.toLowerCase();
+
+            if (dbRole !== ROLE_KEY) {
+              showToast(`Access Mismatch: This account is registered as a ${dbProfile.role}.`, "error");
+              await logLoginActivity(email, `Failed (Role Mismatch: ${dbRole})`, loggedInUser.uid);
+              await signOut(auth);
+            } else {
+              showToast("Login successful!");
+              await logLoginActivity(email, "Success", loggedInUser.uid);
+              window.location.hash = "dashboard";
+            }
+          } else {
+            showToast("User profile node missing in database.", "error");
+            await signOut(auth);
+          }
+        } catch (err) {
+          console.error(err);
+          let errorMsg = "Login failed: Incorrect email or password.";
+          if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+            errorMsg = "Incorrect password or login details.";
+          }
+          showToast(errorMsg, "error");
+          await logLoginActivity(email, "Failed");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+          <div className={`absolute top-0 inset-x-0 h-2 bg-gradient-to-r ${ROLE_INFO.color}`}></div>
+          
+          <div className="text-center mb-6">
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-tr ${ROLE_INFO.color} text-white flex items-center justify-center mx-auto mb-4 shadow-lg`}>
+              <Icon name={ROLE_INFO.icon} className="w-7 h-7" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-800">{ROLE_INFO.label} Log In</h2>
+            <p className="text-sm font-semibold text-slate-400 mt-1">LIFECARE360 Access Portal</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+              <input 
+                type="email" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium text-slate-800"
+                placeholder="Enter registered email"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium text-slate-800 pr-12"
+                  placeholder="Enter password"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                >
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 text-slate-500 cursor-pointer font-semibold">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 rounded text-brand-500 border-slate-300 focus:ring-brand-500" 
+                />
+                Remember Me
+              </label>
+              <a href="#forgot-password" className="text-brand-600 hover:text-brand-700 font-bold">Forgot Password?</a>
+            </div>
+
+            <button 
+              type="submit" 
+              className={`w-full py-3.5 rounded-xl font-extrabold text-white bg-gradient-to-r ${ROLE_INFO.color} shadow-lg transition duration-200`}
+            >
+              Sign In
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3 text-center">
+            <p className="text-sm font-semibold text-slate-500">
+              New to the platform?{' '}
+              <a href="#signup" className="text-brand-600 hover:text-brand-700 font-bold">Create Node Account</a>
+            </p>
+            <a href="index.html" className="text-sm font-bold text-slate-400 hover:text-slate-600">Back to Role Portal</a>
+          </div>
+        </div>
+      );
+    };
+
+    // --- SIGN UP SCREEN ---
+    const SignUpScreen = ({ auth, db, showToast, setLoading }) => {
+      const [formData, setFormData] = useState({});
+      const [errors, setErrors] = useState({});
+      const [showPassword, setShowPassword] = useState(false);
+
+      const handleFieldChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+      };
+
+      const handleSignUp = async (e) => {
+        e.preventDefault();
+        
+        const newErrors = {};
+        if (formData.password !== formData.confirmPassword) {
+          newErrors.confirmPassword = "Passwords do not match.";
+        }
+        if (formData.password && formData.password.length < 6) {
+          newErrors.password = "Password must be at least 6 characters.";
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+          setErrors(newErrors);
+          return;
+        }
+
+        if (!auth) {
+          showToast("Firebase must be configured first.", "error");
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+          const newUser = userCredential.user;
+
+          const profileNode = {
+            uid: newUser.uid,
+            name: formData.receptionistName || "Lifecare Staff",
+            email: formData.email,
+            phone: formData.phone || "",
+            role: ROLE_KEY,
+            hospitalName: formData.hospitalName || "",
+            hospitalId: formData.hospitalId || "",
+            hospitalAddress: formData.hospitalAddress || "",
+            createdAt: new Date().toISOString()
+          };
+
+          await set(ref(db, `users/${newUser.uid}`), profileNode);
+          showToast("Registration successful! Staff profile loaded.");
+          window.location.hash = "dashboard";
+        } catch (err) {
+          console.error(err);
+          let msg = "Signup failed. Review field values.";
+          if (err.code === 'auth/email-already-in-use') {
+            msg = "Email address is already registered.";
+          }
+          showToast(msg, "error");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="w-full max-w-2xl bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden my-6">
+          <div className={`absolute top-0 inset-x-0 h-2 bg-gradient-to-r ${ROLE_INFO.color}`}></div>
+          
+          <div className="text-center mb-6">
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-tr ${ROLE_INFO.color} text-white flex items-center justify-center mx-auto mb-4 shadow-lg`}>
+              <Icon name={ROLE_INFO.icon} className="w-7 h-7" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-800">{ROLE_INFO.label} Registration</h2>
+            <p className="text-sm font-semibold text-slate-400 mt-1">Register new hospital receptionist authentication node</p>
+          </div>
+
+          <form onSubmit={handleSignUp} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <FormField label="Receptionist Full Name" type="text" required onChange={(v) => handleFieldChange('receptionistName', v)} />
+              <FormField label="Hospital Name" type="text" required onChange={(v) => handleFieldChange('hospitalName', v)} />
+              <FormField label="Hospital ID Code" type="text" required onChange={(v) => handleFieldChange('hospitalId', v)} />
+              <FormField label="Phone Number" type="tel" required onChange={(v) => handleFieldChange('phone', v)} />
+              <FormField className="md:col-span-2" label="Hospital Address" type="textarea" required onChange={(v) => handleFieldChange('hospitalAddress', v)} />
+
+              <div className="md:col-span-2 border-t border-slate-100 pt-5 mt-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <FormField label="Email Address" type="email" required onChange={(v) => handleFieldChange('email', v)} />
+                <div className="h-1 flex md:hidden col-span-1"></div>
+                
+                <div>
+                  <FormField 
+                    label="Password" 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    onChange={(v) => handleFieldChange('password', v)} 
+                  />
+                  {errors.password && <span className="text-xs text-rose-500 font-bold mt-1 block">{errors.password}</span>}
+                </div>
+
+                <div>
+                  <FormField 
+                    label="Confirm Password" 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    onChange={(v) => handleFieldChange('confirmPassword', v)} 
+                  />
+                  {errors.confirmPassword && <span className="text-xs text-rose-500 font-bold mt-1 block">{errors.confirmPassword}</span>}
+                </div>
+
+                <div className="md:col-span-2 flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-slate-500 font-semibold cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded text-brand-500 border-slate-300 focus:ring-brand-500"
+                      onChange={(e) => setShowPassword(e.target.checked)} 
+                    />
+                    Show Passwords
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className={`w-full py-4 rounded-xl font-extrabold text-white bg-gradient-to-r ${ROLE_INFO.color} shadow-lg transition`}
+            >
+              Submit Registration
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3 text-center">
+            <p className="text-sm font-semibold text-slate-500">
+              Already have an account?{' '}
+              <a href="#login" className="text-brand-600 hover:text-brand-700 font-bold">Log In</a>
+            </p>
+            <a href="index.html" className="text-sm font-bold text-slate-400 hover:text-slate-600">Back to Role Portal</a>
+          </div>
+        </div>
+      );
+    };
+
+    // Helper Form Field Component
+    const FormField = ({ label, type = "text", placeholder, required, onChange, className = "" }) => {
+      const inputClass = "w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium text-slate-800";
+      return (
+        <div className={`flex flex-col ${className}`}>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</label>
+          {type === "textarea" ? (
+            <textarea 
+              required={required} 
+              placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+              onChange={(e) => onChange(e.target.value)} 
+              rows={3} 
+              className={inputClass}
+            />
+          ) : (
+            <input 
+              type={type} 
+              required={required} 
+              placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+              onChange={(e) => onChange(e.target.value)} 
+              className={inputClass}
+            />
+          )}
+        </div>
+      );
+    };
+
+    // --- FORGOT PASSWORD SCREEN ---
+    const ForgotPasswordScreen = ({ auth, showToast, setLoading }) => {
+      const [email, setEmail] = useState('');
+      const [sent, setSent] = useState(false);
+
+      const handleReset = async (e) => {
+        e.preventDefault();
+        if (!auth) {
+          showToast("Firebase must be configured first.", "error");
+          return;
+        }
+        setLoading(true);
+        try {
+          await sendPasswordResetEmail(auth, email);
+          showToast("Password reset link sent to your email.");
+          setSent(true);
+        } catch (err) {
+          console.error(err);
+          showToast("Failed to send reset link. Ensure the email is correct.", "error");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-2 bg-brand-500"></div>
+
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 rounded-2xl bg-brand-50 text-brand-500 flex items-center justify-center mx-auto mb-4">
+              <Icon name="lock" className="w-7 h-7" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-800">Password Reset</h2>
+            <p className="text-sm font-semibold text-slate-400 mt-1">LIFECARE360 Recovery Node</p>
+          </div>
+
+          {!sent ? (
+            <form onSubmit={handleReset} className="space-y-4">
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">Enter your registered email address and we'll send you a secure link to reset your workspace password.</p>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+                <input 
+                  type="email" 
+                  required 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 font-medium"
+                  placeholder="name@hospital.com"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-3.5 rounded-xl font-extrabold text-white bg-brand-500 hover:bg-brand-600 shadow-md transition"
+              >
+                Send Reset Link
+              </button>
+            </form>
+          ) : (
+            <div className="text-center py-4 space-y-4">
+              <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl border border-emerald-100">
+                <p className="text-sm font-bold">Email Sent Successfully!</p>
+                <p className="text-xs font-medium mt-1">Check your inbox ({email}) for further instructions.</p>
+              </div>
+              <button 
+                onClick={() => setSent(false)} 
+                className="text-sm font-bold text-brand-600 hover:underline"
+              >
+                Try Another Email
+              </button>
+            </div>
+          )}
+
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
+            <a href="#login" className="text-sm font-bold text-slate-400 hover:text-slate-600">Back to Login</a>
+          </div>
+        </div>
+      );
+    };
+
+    // --- DASHBOARDS ROUTER ---
+    const DashboardContainer = ({ user, profile, db, showToast }) => {
+      const roleProfile = profile || { name: "Receptionist", email: "", role: "receptionist" };
+
+      return (
+        <div className="w-full max-w-6xl mx-auto space-y-8 animate-fade-in py-4">
+          
+          {/* User Welcome Header Banner */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm relative overflow-hidden">
+            <div className={`absolute left-0 inset-y-0 w-3 bg-gradient-to-b ${ROLE_INFO.color}`}></div>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Secure Node Dashboard</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-brand-50 text-brand-600 border border-brand-100`}>
+                  {ROLE_INFO.label}
+                </span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Welcome back, {roleProfile.name}
+              </h2>
+              <p className="text-slate-500 text-sm font-medium mt-1">Node Reference ID: <span className="font-mono text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{user?.uid}</span></p>
+            </div>
+            
+            <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col gap-1 text-xs font-semibold text-slate-500 max-w-xs w-full md:w-auto">
+              <div>Email: <span className="text-slate-800 font-bold">{roleProfile.email}</span></div>
+              {roleProfile.phone && <div>Phone: <span className="text-slate-800 font-bold">{roleProfile.phone}</span></div>}
+              <div>Registered: <span className="text-slate-800 font-bold">{roleProfile.createdAt ? new Date(roleProfile.createdAt).toLocaleDateString() : "N/A"}</span></div>
+            </div>
+          </div>
+
+          <HospitalReceptionDashboard db={db} showToast={showToast} profile={roleProfile} />
+        </div>
+      );
+    };
+
+    // --- SUB-DASHBOARD: HOSPITAL RECEPTIONIST ---
+    const HospitalReceptionDashboard = ({ db, showToast, profile }) => {
+      // Dynamic queue tick state
+      const [currentTime, setCurrentTime] = useState(new Date());
+
+      // Appointment Registry States
+      const [patientName, setPatientName] = useState('');
+      const [patientAge, setPatientAge] = useState('');
+      const [specRequired, setSpecRequired] = useState('General Medicine');
+      const [apptTime, setApptTime] = useState('');
+      const [urgency, setUrgency] = useState('Mild');
+      const [prevStatus, setPrevStatus] = useState('Normal');
+
+      const [incomingAmbulance, setIncomingAmbulance] = useState(null);
+      const [appointments, setAppointments] = useState([]);
+      const [doctors, setDoctors] = useState([]);
+
+      // Patient triage queue states
+      const [emergencies, setEmergencies] = useState([]);
+      const [triageFilterSeverity, setTriageFilterSeverity] = useState('all');
+      const [triageSearchText, setTriageSearchText] = useState('');
+
+      // Available Donors states
+      const [donors, setDonors] = useState([]);
+      const [donorFilterType, setDonorFilterType] = useState('all');
+      const [donorFilterBlood, setDonorFilterBlood] = useState('all');
+      const [donorSearchLocation, setDonorSearchLocation] = useState('');
+
+      // Assign Modal / Dropdown active state
+      const [assigningApptId, setAssigningApptId] = useState(null);
+      
+      const hospitalMapRef = useRef(null);
+      const hospitalMapInstance = useRef(null);
+      const incomingAmbulanceMarkerRef = useRef(null);
+      const hospitalDestMarkerRef = useRef(null);
+      const hospitalRouteLayerRef = useRef(null);
+
+      // Recalculate priority time ticker
+      useEffect(() => {
+        const interval = setInterval(() => {
+          setCurrentTime(new Date());
+        }, 15000); // Ticks every 15s to recalculate wait time weights
+        return () => clearInterval(interval);
+      }, []);
+
+      // Listen to appointments, active transfers and emergencies
+      useEffect(() => {
+        if (!db || !profile) return;
+        
+        // Listen to active transfers headed to this hospital
+        const transfersRef = ref(db, 'transfers');
+        const unsubscribeTransfers = onValue(transfersRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const list = Object.values(snapshot.val());
+            const incoming = list.find(t => t.hospitalId === profile.hospitalId && t.status === 'EN_ROUTE');
+            setIncomingAmbulance(incoming || null);
+          } else {
+            setIncomingAmbulance(null);
+          }
+        });
+
+        // Listen to scheduled appointments
+        const apptsRef = ref(db, 'appointments');
+        const unsubscribeAppts = onValue(apptsRef, (snapshot) => {
+          if (snapshot.exists()) {
+            setAppointments(Object.entries(snapshot.val()).map(([id, val]) => ({
+              id,
+              ...val
+            })));
+          } else {
+            setAppointments([]);
+          }
+        });
+
+        // Listen to all emergencies for triage
+        const emergenciesRef = ref(db, 'emergencies');
+        const unsubscribeEmergencies = onValue(emergenciesRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const list = Object.entries(snapshot.val()).map(([id, val]) => ({
+              id,
+              ...val
+            }));
+            setEmergencies(list);
+          } else {
+            setEmergencies([]);
+          }
+        });
+
+        // Listen to users (to get Doctors list and available Donors)
+        const usersRef = ref(db, 'users');
+        const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const rawUsers = snapshot.val();
+            const list = Object.values(rawUsers);
+            
+            // Filter Doctors
+            const docs = list.filter(u => u.role === 'doctor');
+            setDoctors(docs);
+
+            // Filter Donors
+            const dons = list.filter(u => u.role === 'donor_blood' || u.role === 'donor_organ');
+            setDonors(dons);
+          } else {
+            setDoctors([]);
+            setDonors([]);
+          }
+        });
+
+        return () => {
+          unsubscribeTransfers();
+          unsubscribeAppts();
+          unsubscribeEmergencies();
+          unsubscribeUsers();
+        };
+      }, [db, profile]);
+
+      const scheduleAppointment = async (e) => {
+        e.preventDefault();
+        if (!db) return;
+        try {
+          const apptRef = push(ref(db, 'appointments'));
+          await set(apptRef, {
+            patientName: patientName,
+            age: parseInt(patientAge) || 30,
+            specialization: specRequired,
+            appointmentTime: apptTime,
+            urgency: urgency,
+            previousStatus: prevStatus,
+            arrivalStatus: 'Scheduled',
+            arrivalTime: null,
+            assignedDoctorId: null,
+            assignedDoctorName: null,
+            createdAt: new Date().toISOString()
+          });
+          showToast("Appointment registered successfully!");
+          setPatientName('');
+          setPatientAge('');
+          setApptTime('');
+          setUrgency('Mild');
+          setPrevStatus('Normal');
+        } catch (err) {
+          showToast("Failed to schedule appointment.", "error");
+        }
+      };
+
+      // Priority Calculations
+      const calculatePriorityScore = (appt) => {
+        if (appt.arrivalStatus !== 'Arrived') return 0;
+        let score = 0;
+
+        // 1. Urgency Level Weight
+        if (appt.urgency === 'Critical') score += 1000;
+        else if (appt.urgency === 'Moderate') score += 500;
+        else score += 100;
+
+        // 2. Waiting Time Weight (+10 pts per minute)
+        if (appt.arrivalTime) {
+          const minsWaited = Math.max(0, Math.floor((currentTime - new Date(appt.arrivalTime)) / 60000));
+          score += minsWaited * 10;
+        }
+
+        // 3. Age category boost (Elderly >= 65, Infants <= 5)
+        const age = parseInt(appt.age) || 0;
+        if (age >= 65 || age <= 5) score += 50;
+
+        // 4. Previous Latency Penalty
+        if (appt.previousStatus === 'Late') {
+          score -= 100;
+        }
+
+        return score;
+      };
+
+      // Calculate Estimated Wait Time
+      const calculateEstimatedWait = (appt, activeQueueSorted) => {
+        if (appt.arrivalStatus !== 'Arrived') return "N/A";
+        if (appt.assignedDoctorId) return "Assigned / Treating";
+
+        // Find available specialists
+        const availableSpecs = doctors.filter(d => 
+          d.specialization === appt.specialization && d.availability === 'Available'
+        );
+
+        if (availableSpecs.length === 0) {
+          return "Indefinite (No Specialist Available)";
+        }
+
+        // Find index position in the queue of matching specialization
+        const specQueue = activeQueueSorted.filter(q => 
+          q.specialization === appt.specialization && !q.assignedDoctorId
+        );
+        const index = specQueue.findIndex(q => q.id === appt.id);
+
+        if (index === -1) return "Calculating...";
+
+        // Average 15 mins per patient divided by number of available doctors
+        const estMinutes = Math.ceil(((index + 1) * 15) / availableSpecs.length);
+        return `${estMinutes} mins`;
+      };
+
+      // Queue Actions
+      const updateStatus = async (apptId, status) => {
+        if (!db) return;
+        try {
+          const updates = {
+            [`appointments/${apptId}/arrivalStatus`]: status
+          };
+          if (status === 'Arrived') {
+            updates[`appointments/${apptId}/arrivalTime`] = new Date().toISOString();
+          }
+          if (status === 'Cancelled' || status === 'Completed') {
+            updates[`appointments/${apptId}/assignedDoctorId`] = null;
+            updates[`appointments/${apptId}/assignedDoctorName`] = null;
+          }
+          await set(ref(db), {
+            ...updates
+          });
+          showToast(`Status updated to ${status}`);
+        } catch (err) {
+          showToast("Failed to update status.", "error");
+        }
+      };
+
+      const assignDoctor = async (apptId, doctor) => {
+        if (!db) return;
+        try {
+          const apptRef = ref(db, `appointments/${apptId}`);
+          const snap = await get(apptRef);
+          if (snap.exists()) {
+            const data = snap.val();
+            await set(apptRef, {
+              ...data,
+              assignedDoctorId: doctor.uid,
+              assignedDoctorName: doctor.name
+            });
+            showToast(`Assigned to Dr. ${doctor.name}`);
+            setAssigningApptId(null);
+          }
+        } catch (err) {
+          showToast("Failed to assign doctor.", "error");
+        }
+      };
+
+      const toggleDoctorStatus = async (docUid, currentAvailability) => {
+        if (!db) return;
+        try {
+          // Find doc profile
+          const snapshot = await get(ref(db, `users`));
+          if (snapshot.exists()) {
+            const users = snapshot.val();
+            const docKey = Object.keys(users).find(k => users[k].uid === docUid);
+            if (docKey) {
+              const newStatus = currentAvailability === 'Available' ? 'Unavailable' : 'Available';
+              await set(ref(db, `users/${docKey}/availability`), newStatus);
+              showToast(`Doctor availability set to ${newStatus}`);
+            }
+          }
+        } catch (err) {
+          showToast("Failed to update doctor status.", "error");
+        }
+      };
+
+      // Generate the Active Waiting Queue (Sorted by calculated score)
+      const waitingQueue = appointments
+        .filter(a => a.arrivalStatus === 'Arrived')
+        .map(a => ({
+          ...a,
+          priorityScore: calculatePriorityScore(a)
+        }))
+        .sort((a, b) => {
+          if (b.priorityScore !== a.priorityScore) {
+            return b.priorityScore - a.priorityScore; // High score first
+          }
+          // Tie-breaker: earlier appointment time first
+          return a.appointmentTime.localeCompare(b.appointmentTime);
+        });
+
+      // Hospital map logic
+      useEffect(() => {
+        if (incomingAmbulance && hospitalMapRef.current) {
+          const ambLat = incomingAmbulance.ambulanceLatitude;
+          const ambLng = incomingAmbulance.ambulanceLongitude;
+          const destLat = incomingAmbulance.destinationLatitude;
+          const destLng = incomingAmbulance.destinationLongitude;
+
+          if (ambLat && ambLng) {
+            if (!hospitalMapInstance.current) {
+              hospitalMapInstance.current = L.map(hospitalMapRef.current).setView([ambLat, ambLng], 13);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+              }).addTo(hospitalMapInstance.current);
+              setTimeout(() => {
+                if (hospitalMapInstance.current) hospitalMapInstance.current.invalidateSize();
+              }, 250);
+            } else {
+              hospitalMapInstance.current.setView([ambLat, ambLng]);
+            }
+
+            if (incomingAmbulanceMarkerRef.current) {
+              incomingAmbulanceMarkerRef.current.setLatLng([ambLat, ambLng]);
+            } else {
+              const ambIcon = L.divIcon({
+                html: '<div class="text-3xl">🚑</div>',
+                className: 'bg-transparent border-0',
+                iconSize: [30, 30]
+              });
+              incomingAmbulanceMarkerRef.current = L.marker([ambLat, ambLng], { icon: ambIcon })
+                .addTo(hospitalMapInstance.current)
+                .bindPopup("Incoming Ambulance: " + incomingAmbulance.ambulanceId);
+            }
+
+            if (!hospitalDestMarkerRef.current) {
+              const hospIcon = L.divIcon({
+                html: `<div class="relative w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white shadow-md border border-white font-bold text-xs">🏥</div>`,
+                className: 'bg-transparent border-0',
+                iconSize: [32, 32]
+              });
+              hospitalDestMarkerRef.current = L.marker([destLat, destLng], { icon: hospIcon })
+                .addTo(hospitalMapInstance.current)
+                .bindPopup("Your Hospital");
+            }
+
+            const fetchRoute = async () => {
+              try {
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${ambLng},${ambLat};${destLng},${destLat}?overview=full&geometries=geojson`);
+                if (res.ok) {
+                  const json = await res.json();
+                  if (json.routes && json.routes.length > 0) {
+                    const coords = json.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    if (hospitalRouteLayerRef.current) {
+                      hospitalMapInstance.current.removeLayer(hospitalRouteLayerRef.current);
+                    }
+                    hospitalRouteLayerRef.current = L.polyline(coords, { color: '#ef4444', weight: 5 }).addTo(hospitalMapInstance.current);
+                  }
+                }
+              } catch (err) {
+                console.error("Hospital map routing error:", err);
+              }
+            };
+            fetchRoute();
+          }
+        } else {
+          if (hospitalMapInstance.current) {
+            hospitalMapInstance.current.remove();
+            hospitalMapInstance.current = null;
+            incomingAmbulanceMarkerRef.current = null;
+            hospitalDestMarkerRef.current = null;
+            hospitalRouteLayerRef.current = null;
+          }
+        }
+      }, [incomingAmbulance]);
+
+      // Filter emergencies
+      const filteredEmergencies = emergencies.filter(e => {
+        const matchSeverity = triageFilterSeverity === 'all' || e.urgency === triageFilterSeverity;
+        const matchText = !triageSearchText || 
+          (e.patientName && e.patientName.toLowerCase().includes(triageSearchText.toLowerCase())) ||
+          (e.reason && e.reason.toLowerCase().includes(triageSearchText.toLowerCase())) ||
+          (e.location && e.location.toLowerCase().includes(triageSearchText.toLowerCase()));
+        const isNotResolved = e.status !== 'RESOLVED' && e.status !== 'ARRIVED';
+        return matchSeverity && matchText && isNotResolved;
+      });
+
+      // Filter donors
+      const filteredDonors = donors.filter(d => {
+        const matchType = donorFilterType === 'all' || d.role === (donorFilterType === 'blood' ? 'donor_blood' : 'donor_organ');
+        const matchBlood = donorFilterBlood === 'all' || d.bloodGroup === donorFilterBlood;
+        const matchLoc = !donorSearchLocation || (d.location && d.location.toLowerCase().includes(donorSearchLocation.toLowerCase())) || (d.address && d.address.toLowerCase().includes(donorSearchLocation.toLowerCase()));
+        const isAvailable = d.availability === 'Available' || d.consent === true;
+        return matchType && matchBlood && matchLoc && isAvailable;
+      });
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Live Incoming Ambulance Alert */}
+            {incomingAmbulance ? (
+              <div className="bg-rose-50 border border-rose-200 rounded-3xl p-6 shadow-md border-l-8 border-l-rose-600">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-600 text-white animate-pulse">
+                      🚨 INCOMING AMBULANCE
+                    </span>
+                    <h3 className="text-xl font-extrabold text-slate-800 mt-2">Emergency Case Transfer</h3>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-slate-400 block font-bold">Estimated Arrival</span>
+                    <span className="text-2xl font-extrabold text-rose-600">{incomingAmbulance.estimatedArrivalTime}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-t border-b border-rose-100 text-sm font-semibold text-rose-950">
+                  <div>Patient Name: <span className="block text-slate-800 font-extrabold mt-0.5">{incomingAmbulance.patientName}</span></div>
+                  <div>Ambulance ID: <span className="block text-slate-800 font-extrabold mt-0.5 truncate font-mono text-xs">{incomingAmbulance.ambulanceId}</span></div>
+                  <div>Emergency Type: <span className="block text-rose-600 font-extrabold mt-0.5">{incomingAmbulance.emergencyType}</span></div>
+                  <div>Blood Group: <span className="block text-slate-800 font-extrabold mt-0.5">{incomingAmbulance.bloodGroup}</span></div>
+                </div>
+
+                <div className="mt-6 flex flex-col h-[350px] rounded-2xl relative border border-rose-100 overflow-hidden bg-white z-0">
+                  <div ref={hospitalMapRef} className="absolute inset-0 rounded-2xl"></div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-100 rounded-3xl p-8 text-center text-slate-400 shadow-sm py-8 animate-fade-in">
+                <Icon name="truck" className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                <h3 className="font-extrabold text-md text-slate-600">No Incoming Transports</h3>
+                <p className="text-xs text-slate-400 font-semibold mt-1">Ready for ambulance dispatches.</p>
+              </div>
+            )}
+
+            {/* Dynamic waiting priority queue */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                  <Icon name="activity" className="w-5 h-5 text-teal-500" />
+                  Dynamic Patient Priority Treatment Queue
+                </h3>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                  Auto-recalulating wait time...
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 uppercase text-[9px] font-extrabold tracking-wider">
+                      <th className="py-2.5 px-3">Rank</th>
+                      <th className="py-2.5 px-3">Patient (Age)</th>
+                      <th className="py-2.5 px-3">Specialization</th>
+                      <th className="py-2.5 px-3">Urgency</th>
+                      <th className="py-2.5 px-3">Score</th>
+                      <th className="py-2.5 px-3">Est. Wait Time</th>
+                      <th className="py-2.5 px-3">Assigned Doctor</th>
+                      <th className="py-2.5 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
+                    {waitingQueue.length > 0 ? (
+                      waitingQueue.map((appt, idx) => {
+                        const estWait = calculateEstimatedWait(appt, waitingQueue);
+                        const isAssigned = !!appt.assignedDoctorId;
+                        return (
+                          <tr key={appt.id} className="hover:bg-slate-50/50">
+                            <td className="py-3 px-3 font-extrabold text-slate-900 text-sm">#{idx + 1}</td>
+                            <td className="py-3 px-3 text-slate-900 font-extrabold">
+                              {appt.patientName} <span className="text-xs text-slate-400 font-bold">({appt.age}y)</span>
+                            </td>
+                            <td className="py-3 px-3">{appt.specialization}</td>
+                            <td className="py-3 px-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                                appt.urgency === 'Critical' ? 'bg-red-500 text-white animate-pulse' :
+                                appt.urgency === 'Moderate' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                {appt.urgency}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-teal-600 font-bold">{appt.priorityScore} pts</td>
+                            <td className={`py-3 px-3 font-bold ${estWait.startsWith('Indefinite') ? 'text-rose-500 font-extrabold' : 'text-slate-700'}`}>
+                              {estWait}
+                            </td>
+                            <td className="py-3 px-3 text-brand-600">
+                              {isAssigned ? `Dr. ${appt.assignedDoctorName}` : 'Unassigned'}
+                            </td>
+                            <td className="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
+                              {!isAssigned && (
+                                <div className="inline-block relative">
+                                  {assigningApptId === appt.id ? (
+                                    <select 
+                                      onChange={(e) => {
+                                        const doc = doctors.find(d => d.uid === e.target.value);
+                                        if (doc) assignDoctor(appt.id, doc);
+                                      }}
+                                      className="px-2 py-1 bg-brand-50 border border-brand-200 text-brand-700 rounded text-[10px] font-bold outline-none"
+                                    >
+                                      <option value="">Select Specialist</option>
+                                      {doctors
+                                        .filter(d => d.specialization === appt.specialization && d.availability === 'Available')
+                                        .map(d => (
+                                          <option key={d.uid} value={d.uid}>{d.name}</option>
+                                        ))
+                                      }
+                                    </select>
+                                  ) : (
+                                    <button 
+                                      onClick={() => setAssigningApptId(appt.id)}
+                                      className="px-2.5 py-1 bg-brand-500 text-white rounded text-[10px] font-bold hover:bg-brand-600 transition shadow-sm"
+                                    >
+                                      Assign Doctor
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              <button 
+                                onClick={() => updateStatus(appt.id, 'Completed')}
+                                className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[10px] font-bold hover:bg-emerald-100 transition"
+                              >
+                                Done
+                              </button>
+                              <button 
+                                onClick={() => updateStatus(appt.id, 'Cancelled')}
+                                className="px-2 py-1 bg-slate-100 text-slate-500 rounded text-[10px] font-bold hover:bg-slate-200 transition"
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="text-center py-8 text-slate-400 font-bold">No arrived patients in waiting queue.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Bookings & Registered List */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+              <h3 className="text-lg font-extrabold text-slate-800 mb-4">Today's Appointment Log</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 uppercase text-[9px] font-extrabold tracking-wider">
+                      <th className="py-2 px-3">Patient</th>
+                      <th className="py-2 px-3">Specialization</th>
+                      <th className="py-2 px-3">Appt Time</th>
+                      <th className="py-2 px-3">Status</th>
+                      <th className="py-2 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
+                    {appointments.filter(a => a.arrivalStatus !== 'Arrived').length > 0 ? (
+                      appointments.filter(a => a.arrivalStatus !== 'Arrived').map(appt => (
+                        <tr key={appt.id} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-3 text-slate-900 font-bold">{appt.patientName} ({appt.age}y)</td>
+                          <td className="py-2.5 px-3">{appt.specialization}</td>
+                          <td className="py-2.5 px-3">{appt.appointmentTime}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              appt.arrivalStatus === 'Scheduled' ? 'bg-sky-50 text-sky-700' :
+                              appt.arrivalStatus === 'Late' ? 'bg-amber-100 text-amber-800' :
+                              appt.arrivalStatus === 'Completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {appt.arrivalStatus}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right space-x-1.5">
+                            {appt.arrivalStatus === 'Scheduled' && (
+                              <>
+                                <button 
+                                  onClick={() => updateStatus(appt.id, 'Arrived')}
+                                  className="px-2 py-1 bg-teal-500 text-white rounded text-[10px] font-bold hover:bg-teal-600 transition"
+                                >
+                                  Arrived
+                                </button>
+                                <button 
+                                  onClick={() => updateStatus(appt.id, 'Late')}
+                                  className="px-2 py-1 bg-amber-500 text-white rounded text-[10px] font-bold hover:bg-amber-600 transition"
+                                >
+                                  Late
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center py-6 text-slate-400 font-bold">No other appointments scheduled.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Available Donors Directory */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+              <h3 className="text-lg font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                <Icon name="droplet" className="w-5 h-5 text-rose-500" />
+                Emergency Available Donors Lookup
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Donor Type</label>
+                  <select 
+                    value={donorFilterType} 
+                    onChange={(e) => setDonorFilterType(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-brand-500 text-xs font-semibold bg-white"
+                  >
+                    <option value="all">All Donors</option>
+                    <option value="blood">Blood Donors</option>
+                    <option value="organ">Organ Donors</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Blood Group</label>
+                  <select 
+                    value={donorFilterBlood} 
+                    onChange={(e) => setDonorFilterBlood(e.target.value)}
+                    disabled={donorFilterType === 'organ'}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-brand-500 text-xs font-semibold bg-white disabled:bg-slate-50"
+                  >
+                    <option value="all">All Groups</option>
+                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(bg => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Search Location / Area</label>
+                  <input 
+                    type="text" 
+                    value={donorSearchLocation} 
+                    onChange={(e) => setDonorSearchLocation(e.target.value)} 
+                    placeholder="Enter city or area name..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-brand-500 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 uppercase text-[9px] font-extrabold tracking-wider">
+                      <th className="py-2.5 px-3">Name</th>
+                      <th className="py-2.5 px-3">Type</th>
+                      <th className="py-2.5 px-3">Blood / Preference</th>
+                      <th className="py-2.5 px-3">Location</th>
+                      <th className="py-2.5 px-3">Contact</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 font-semibold text-slate-600">
+                    {filteredDonors.length > 0 ? (
+                      filteredDonors.map((donor, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="py-3 px-3 text-slate-900 font-bold">{donor.name}</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                              donor.role === 'donor_blood' ? 'bg-rose-50 text-rose-700' : 'bg-pink-50 text-pink-700'
+                            }`}>
+                              {donor.role === 'donor_blood' ? '🩸 Blood' : '❤️ Organ'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-slate-800">
+                              {donor.role === 'donor_blood' ? donor.bloodGroup : donor.organPreference || "All Organs"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 truncate max-w-[150px]">{donor.location || donor.address || "N/A"}</td>
+                          <td className="py-3 px-3">
+                            <a href={`tel:${donor.phone}`} className="px-2.5 py-1 bg-brand-50 text-brand-600 border border-brand-100 rounded-lg text-[10px] font-bold hover:bg-brand-50 transition inline-block text-center shadow-sm">
+                              Call Donor
+                            </a>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center py-6 text-slate-400 font-bold">No available donors found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1 space-y-6">
+            {/* Book Appointment Scheduler Form */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+              <h3 className="text-lg font-extrabold text-slate-800 mb-4">Register Patient Appointment</h3>
+              <form onSubmit={scheduleAppointment} className="space-y-4">
+                <FormField label="Patient Name" type="text" required onChange={setPatientName} value={patientName} />
+                <FormField label="Patient Age" type="number" required onChange={setPatientAge} value={patientAge} />
+                <div className="flex flex-col">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Required Specialization</label>
+                  <select 
+                    value={specRequired} 
+                    onChange={(e) => setSpecRequired(e.target.value)} 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none bg-white focus:border-brand-500 font-semibold text-slate-800 text-sm"
+                  >
+                    {["General Medicine", "Cardiology", "Neurology", "Pediatrics", "Orthopedics", "Emergency Medicine"].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <FormField label="Appointment Time" type="text" required placeholder="e.g. 14:30" onChange={setApptTime} value={apptTime} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-2">Emergency Level</label>
+                    <select 
+                      value={urgency} 
+                      onChange={(e) => setUrgency(e.target.value)} 
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                    >
+                      <option value="Mild">Mild</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Critical">Critical</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-2">Previous Status</label>
+                    <select 
+                      value={prevStatus} 
+                      onChange={(e) => setPrevStatus(e.target.value)} 
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                    >
+                      <option value="Normal">Normal</option>
+                      <option value="Late">Late Arrived</option>
+                      <option value="Rescheduled">Rescheduled</option>
+                    </select>
+                  </div>
+                </div>
+                <button 
+                  type="submit" 
+                  className="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-extrabold rounded-xl transition shadow"
+                >
+                  Book Appointment Slot
+                </button>
+              </form>
+            </div>
+
+            {/* Live Doctors Availability Dashboard */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+              <h3 className="text-lg font-extrabold text-slate-800 mb-4">Doctor Availability Node</h3>
+              <div className="space-y-4">
+                {doctors.length > 0 ? (
+                  doctors.map((doc, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold">
+                      <div>
+                        <div className="text-slate-800">Dr. {doc.name}</div>
+                        <div className="text-slate-400 mt-0.5 font-semibold">{doc.specialization}</div>
+                      </div>
+                      <button 
+                        onClick={() => toggleDoctorStatus(doc.uid, doc.availability)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition ${
+                          doc.availability === 'Available' 
+                            ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                            : 'bg-rose-500 text-white hover:bg-rose-600'
+                        }`}
+                      >
+                        {doc.availability || 'Unavailable'}
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-slate-400 font-semibold text-xs">No doctors registered.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Institution Info */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+              <h3 className="text-md font-extrabold text-slate-800 mb-2">On Duty Institution</h3>
+              <div className="text-xs font-semibold text-slate-500">
+                <div>Hospital: <span className="text-slate-800 font-extrabold">{profile.hospitalName || "N/A"}</span></div>
+                <div>Node ID: <span className="text-slate-800 font-extrabold">{profile.hospitalId || "N/A"}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Render the React Application
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+</body>
+</html>

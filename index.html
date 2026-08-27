@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lifecare360 | Connected Care. Anytime. Anywhere.</title>
+  <link rel="icon" href="life.jpeg">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 & ReactDOM 18 -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel Standalone for JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.5; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(0.95); opacity: 0.5; }
+    }
+    .pulse-logo {
+      animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.4s ease-out forwards;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              900: '#115e59',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full text-slate-800">
+  <div id="root" class="h-full"></div>
+
+  <!-- Main script block executing JSX and ES Modules -->
+  <script type="text/babel" data-type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+    const { useState, useEffect } = React;
+
+    // --- Embedded Custom SVG Icons (Lucide replacements) ---
+    const Icon = ({ name, className = "w-6 h-6", ...props }) => {
+      const icons = {
+        activity: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        ),
+        user: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        ),
+        droplet: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
+          </svg>
+        ),
+        heart: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+          </svg>
+        ),
+        truck: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+            <circle cx="5.5" cy="18.5" r="2.5" />
+            <circle cx="18.5" cy="18.5" r="2.5" />
+          </svg>
+        ),
+        building: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+            <line x1="9" y1="22" x2="9" y2="16" />
+            <line x1="15" y1="22" x2="15" y2="16" />
+            <line x1="9" y1="16" x2="15" y2="16" />
+            <path d="M8 6h8" />
+            <path d="M8 10h8" />
+          </svg>
+        ),
+        stethoscope: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.3.3 0 1 0 .2.3" />
+            <path d="M8 15v1a6 6 0 0 0 6 6h2a6 6 0 0 0 6-6v-4" />
+            <circle cx="20" cy="10" r="2" />
+          </svg>
+        ),
+        shield: (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+        )
+      };
+      return icons[name] || icons['activity'];
+    };
+
+    // --- Role Information ---
+    const ROLES = {
+      patient: { label: "Patient", icon: "user", color: "from-teal-500 to-emerald-600", file: "patient.html" },
+      donor_blood: { label: "Blood Donor", icon: "droplet", color: "from-rose-500 to-red-600", file: "donor_blood.html" },
+      donor_organ: { label: "Organ Donor", icon: "heart", color: "from-pink-500 to-rose-600", file: "donor_organ.html" },
+      driver: { label: "Ambulance Driver", icon: "truck", color: "from-amber-500 to-orange-600", file: "driver.html" },
+      receptionist: { label: "Hospital Reception", icon: "building", color: "from-sky-500 to-blue-600", file: "receptionist.html" },
+      doctor: { label: "Doctor", icon: "stethoscope", color: "from-indigo-500 to-violet-600", file: "doctor.html" },
+      admin: { label: "System Admin", icon: "shield", color: "from-slate-700 to-slate-900", file: "admin.html" }
+    };
+
+    // --- Main Application Component ---
+    const App = () => {
+      // Configuration & Firebase References
+      const [firebaseConfig] = useState(() => {
+        const saved = localStorage.getItem('lc_firebase_config');
+        return saved ? JSON.parse(saved) : {
+          apiKey: "AIzaSyAYN9lsXTxwoL9mqvPs2YbTnrYaIXAgOFE",
+          authDomain: "lifecare360-968fd.firebaseapp.com",
+          databaseURL: "https://lifecare360-968fd-default-rtdb.firebaseio.com",
+          projectId: "lifecare360-968fd",
+          storageBucket: "lifecare360-968fd.firebasestorage.app",
+          messagingSenderId: "872526740925",
+          appId: "1:872526740925:web:0feb7f631660778089e6d4"
+        };
+      });
+
+      const [firebaseApp, setFirebaseApp] = useState(null);
+      const [db, setDb] = useState(null);
+
+      // Initialize Firebase App
+      useEffect(() => {
+        if (firebaseConfig.apiKey) {
+          try {
+            const app = initializeApp(firebaseConfig);
+            const dbInstance = getDatabase(app);
+            setFirebaseApp(app);
+            setDb(dbInstance);
+            console.log("Firebase initialized successfully on portal.");
+          } catch (err) {
+            console.error("Firebase Init Error:", err);
+          }
+        }
+      }, [firebaseConfig]);
+
+      // Seed Hospitals to Database if empty
+      useEffect(() => {
+        if (!db) return;
+        const seedHospitals = async () => {
+          try {
+            const hospRef = ref(db, 'hospitals');
+            const snapshot = await get(hospRef);
+            if (!snapshot.exists()) {
+              let baseLat = 13.0827; // Chennai fallback
+              let baseLng = 80.2707;
+              
+              const getPosition = () => {
+                return new Promise((resolve) => {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+                    () => resolve({ lat: 13.0827, lng: 80.2707 }),
+                    { timeout: 5000 }
+                  );
+                });
+              };
+              
+              const coords = await getPosition();
+              baseLat = coords.lat;
+              baseLng = coords.lng;
+              
+              const defaultHospitals = {
+                hosp_lifecare: {
+                  id: "hosp_lifecare",
+                  name: "Lifecare General Hospital",
+                  latitude: baseLat + 0.015,
+                  longitude: baseLng + 0.012,
+                  address: "45 Health Parkway, Central Sector",
+                  emergencyAvailable: true,
+                  icuBeds: 5,
+                  generalBeds: 22,
+                  ambulanceSupport: true,
+                  specialists: ["Cardiologist", "Neurologist", "Pediatrician"],
+                  phone: "1-800-555-0199",
+                  status: "OPEN"
+                },
+                hosp_city_trauma: {
+                  id: "hosp_city_trauma",
+                  name: "City Trauma & Emergency Care",
+                  latitude: baseLat - 0.012,
+                  longitude: baseLng + 0.018,
+                  address: "99 Rescue Road, East End",
+                  emergencyAvailable: true,
+                  icuBeds: 2,
+                  generalBeds: 10,
+                  ambulanceSupport: true,
+                  specialists: ["Orthopedician", "Trauma Surgeon"],
+                  phone: "1-800-555-0188",
+                  status: "OPEN"
+                },
+                hosp_apex_heart: {
+                  id: "hosp_apex_heart",
+                  name: "Apex Heart & ICU Center",
+                  latitude: baseLat + 0.008,
+                  longitude: baseLng - 0.015,
+                  address: "12 Cardiology Way, Cardiac Hub",
+                  emergencyAvailable: true,
+                  icuBeds: 12,
+                  generalBeds: 15,
+                  ambulanceSupport: true,
+                  specialists: ["Cardiologist", "ICU Specialist"],
+                  phone: "1-800-555-0177",
+                  status: "OPEN"
+                },
+                hosp_metro_pediatric: {
+                  id: "hosp_metro_pediatric",
+                  name: "Metro Pediatric Clinic",
+                  latitude: baseLat - 0.018,
+                  longitude: baseLng - 0.010,
+                  address: "7 Childcare Boulevard",
+                  emergencyAvailable: false,
+                  icuBeds: 0,
+                  generalBeds: 5,
+                  ambulanceSupport: false,
+                  specialists: ["Pediatrician"],
+                  phone: "1-800-555-0166",
+                  status: "CLOSED"
+                }
+              };
+              
+              await set(hospRef, defaultHospitals);
+              console.log("Hospitals list seeded in Realtime Database.");
+            }
+
+            // Seed Doctors to Database if empty
+            const docRef = ref(db, 'doctors');
+            const docSnapshot = await get(docRef);
+            if (!docSnapshot.exists()) {
+              let baseLat = 13.0827; // Chennai fallback
+              let baseLng = 80.2707;
+              
+              const getPosition = () => {
+                return new Promise((resolve) => {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+                    () => resolve({ lat: 13.0827, lng: 80.2707 }),
+                    { timeout: 5000 }
+                  );
+                });
+              };
+              
+              const coords = await getPosition();
+              baseLat = coords.lat;
+              baseLng = coords.lng;
+
+              const defaultDoctors = {
+                doc_arun: {
+                  doctorId: "doc_arun",
+                  name: "Dr. Arun Kumar",
+                  specialization: "Cardiologist",
+                  hospital: "Apex Heart & ICU Center",
+                  experience: 15,
+                  fee: 50,
+                  rating: 4.8,
+                  availability: "Available",
+                  todaySlots: ["09:00 AM", "09:30 AM", "10:00 AM", "11:30 AM"],
+                  onlineConsultation: true,
+                  latitude: baseLat + 0.008,
+                  longitude: baseLng - 0.015,
+                  currentPatients: 2,
+                  averageConsultationTime: 15,
+                  languages: "English, Tamil"
+                },
+                doc_priya: {
+                  doctorId: "doc_priya",
+                  name: "Dr. Priya Sharma",
+                  specialization: "Pediatrician",
+                  hospital: "Metro Pediatric Clinic",
+                  experience: 10,
+                  fee: 40,
+                  rating: 4.9,
+                  availability: "Available",
+                  todaySlots: ["09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM"],
+                  onlineConsultation: true,
+                  latitude: baseLat - 0.018,
+                  longitude: baseLng - 0.010,
+                  currentPatients: 1,
+                  averageConsultationTime: 15,
+                  languages: "English, Hindi"
+                },
+                doc_rajesh: {
+                  doctorId: "doc_rajesh",
+                  name: "Dr. Rajesh Patel",
+                  specialization: "Neurologist",
+                  hospital: "Lifecare General Hospital",
+                  experience: 12,
+                  fee: 60,
+                  rating: 4.7,
+                  availability: "Busy",
+                  todaySlots: ["02:00 PM", "02:30 PM", "03:00 PM"],
+                  onlineConsultation: false,
+                  latitude: baseLat + 0.015,
+                  longitude: baseLng + 0.012,
+                  currentPatients: 5,
+                  averageConsultationTime: 20,
+                  languages: "English, Gujarati"
+                },
+                doc_suresh: {
+                  doctorId: "doc_suresh",
+                  name: "Dr. Suresh Raina",
+                  specialization: "General Physician",
+                  hospital: "Lifecare General Hospital",
+                  experience: 8,
+                  fee: 30,
+                  rating: 4.5,
+                  availability: "Available",
+                  todaySlots: ["09:00 AM", "09:30 AM", "10:30 AM", "11:00 AM"],
+                  onlineConsultation: true,
+                  latitude: baseLat + 0.015,
+                  longitude: baseLng + 0.012,
+                  currentPatients: 0,
+                  averageConsultationTime: 12,
+                  languages: "English, Tamil"
+                },
+                doc_karan: {
+                  doctorId: "doc_karan",
+                  name: "Dr. Karan Johar",
+                  specialization: "Dermatologist",
+                  hospital: "Lifecare General Hospital",
+                  experience: 7,
+                  fee: 35,
+                  rating: 4.6,
+                  availability: "Available",
+                  todaySlots: ["10:00 AM", "11:00 AM", "12:00 PM"],
+                  onlineConsultation: true,
+                  latitude: baseLat + 0.015,
+                  longitude: baseLng + 0.012,
+                  currentPatients: 3,
+                  averageConsultationTime: 10,
+                  languages: "English, Hindi"
+                }
+              };
+
+              await set(docRef, defaultDoctors);
+              console.log("Doctors seeded successfully in Realtime Database.");
+            }
+          } catch (err) {
+            console.error("Seed Error:", err);
+          }
+        };
+        seedHospitals();
+      }, [db]);
+
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
+          {/* Header */}
+          <header className="bg-white border-b border-slate-100 py-4 px-6 flex justify-between items-center z-10 shadow-sm">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.reload()}>
+              <div className="bg-brand-500 text-white p-2 rounded-xl shadow-md shadow-brand-500/20">
+                <Icon name="activity" className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="font-extrabold text-xl tracking-tight text-slate-900">LIFECARE<span className="text-brand-500">360</span></h1>
+                <p className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Connected Care Network</p>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Area */}
+          <main className="flex-1 flex flex-col justify-center items-center p-4 md:p-8 relative">
+            <div className="w-full max-w-5xl mx-auto flex flex-col items-center py-4 animate-fade-in">
+              <div className="text-center max-w-2xl mb-8">
+                <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Welcome to Lifecare360</h2>
+                <p className="text-slate-500 font-medium">Choose your workspace node below to log in or create a registered staff/patient profile.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full px-2">
+                {Object.entries(ROLES).map(([key, role]) => (
+                  <div 
+                    key={key} 
+                    className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${role.color} text-white flex items-center justify-center mb-5 shadow-lg`}>
+                        <Icon name={role.icon} className="w-6 h-6" />
+                      </div>
+                      <h3 className="font-extrabold text-lg text-slate-800 mb-1">{role.label}</h3>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-6">Portal Node</p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <a 
+                        href={`${role.file}#login`}
+                        className={`w-full py-2.5 rounded-xl font-bold text-center text-sm shadow-md transition duration-200 text-white bg-gradient-to-r ${role.color}`}
+                      >
+                        Login
+                      </a>
+                      {key !== 'admin' ? (
+                        <a 
+                          href={`${role.file}#signup`}
+                          className="w-full py-2.5 rounded-xl font-bold text-center text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+                        >
+                          Sign Up
+                        </a>
+                      ) : (
+                        <div className="h-10"></div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </main>
+
+          {/* Footer */}
+          <footer className="py-4 text-center text-xs font-semibold text-slate-400 bg-white border-t border-slate-100">
+            &copy; {new Date().getFullYear()} Lifecare360 Network. Connected Care. Anytime. Anywhere.
+          </footer>
+        </div>
+      );
+    };
+
+    // Render the React Application
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+</body>
+</html>
